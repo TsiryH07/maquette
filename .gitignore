@@ -1,0 +1,8 @@
+node_modules/
+.svelte-kit/
+build/
+storybook-static/
+reports/
+.env
+.env.*
+!.env.example

@@ -1,0 +1,93 @@
+import { verifyMotion } from './verify-motion.mjs';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { setTimeout as delay } from 'node:timers/promises';
+import { chromium } from 'playwright';
+
+const production = process.argv.includes('--preview');
+const port = production ? 4082 : 3082;
+const url = `http://127.0.0.1:${port}`;
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', ...(production ? ['preview'] : []), '--host', '127.0.0.1', '--port', String(port), '--strictPort'], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+let logs = '';
+server.stdout.on('data', chunk => { logs += chunk; });
+server.stderr.on('data', chunk => { logs += chunk; });
+let browser;
+try {
+  let ready = false;
+  for (let i = 0; i < 120; i++) {
+    if (server.exitCode !== null) throw new Error(logs);
+    try { ready = (await fetch(url)).ok; } catch {}
+    if (ready) break;
+    await delay(500);
+  }
+  assert(ready, logs);
+  browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1600, height: 1100 } });
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(url);
+  await page.getByRole('heading', { name: 'Atelier de préparation' }).waitFor();
+  await mkdir('reports', { recursive: true });
+  for (const [name, layout, width, height] of [['Ordinateur','desktop',1440,900],['Tablette','tablet',900,900],['Mobile portrait','portrait',390,844],['Mobile paysage','landscape',844,390]]) {
+    await page.getByRole('button', { name, exact: true }).click();
+    const frame = page.frameLocator('iframe');
+    await frame.locator(`main[data-layout="${layout}"]`).waitFor();
+    const dimensions = await frame.locator('body').evaluate(() => [innerWidth, innerHeight, document.documentElement.scrollWidth > innerWidth, document.documentElement.scrollHeight > innerHeight]);
+    assert.deepEqual(dimensions, [width,height,false,false]);
+    const primary = await frame.locator('.primary').boundingBox();
+    const viewport = await page.locator('iframe').boundingBox();
+    assert(primary.y >= viewport.y && primary.y + primary.height <= viewport.y + viewport.height + 1, 'Action principale visible');
+    const cell = await frame.locator('.cell').first().boundingBox();
+    assert(cell.width >= 44 && cell.height >= 44, `Cases tactiles suffisantes : ${layout}, ${cell.width} × ${cell.height}`);
+    await page.locator('iframe').screenshot({ path: `reports/${layout}.png` });
+    console.log(`OK ${name} : ${width} × ${height}, aucune sortie d’écran.`);
+  }
+  await page.getByRole('button', { name: 'Mobile portrait', exact: true }).click();
+  const frame = page.frameLocator('iframe');
+  await frame.getByRole('button', { name: 'Augmenter la mise', exact: true }).click();
+  await frame.getByRole('button', { name: 'Commencer 20 FCFA', exact: true }).waitFor();
+  await frame.getByRole('group', { name: 'Montants rapides' }).getByRole('button', { name: '500 FCFA', exact: true }).click();
+  await frame.getByRole('button', { name: 'Choisir la difficulté', exact: true }).click();
+  await frame.getByRole('button', { name: /^Expert/ }).click();
+  await frame.locator('.difficulty-selection').evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
+  await page.locator('iframe').screenshot({ path: 'reports/options.png' });
+  await frame.getByRole('button', { name: 'Terminé', exact: true }).click();
+  await frame.getByRole('button', { name: 'Commencer 500 FCFA', exact: true }).click();
+  await frame.locator('main[data-scenario="playing"]').waitFor();
+  assert(await frame.getByRole('button', { name: 'Augmenter la mise' }).isDisabled());
+  assert(await frame.getByRole('button', { name: 'Choisir la difficulté' }).isDisabled());
+  assert(await frame.locator('.primary').isDisabled());
+  await frame.getByRole('button', { name: 'Révéler la case 1', exact: true }).click();
+  await frame.getByRole('button', { name: 'Encaisser 700,00 FCFA', exact: true }).waitFor();
+  await frame.getByRole('button', { name: 'Révéler la case 2', exact: true }).click();
+  await frame.getByRole('button', { name: 'Encaisser 950,00 FCFA', exact: true }).waitFor();
+  await page.locator('iframe').screenshot({ path: 'reports/running.png' });
+  await frame.getByRole('button', { name: 'Encaisser 950,00 FCFA', exact: true }).click();
+  await frame.locator('main[data-scenario="cashedOut"]').waitFor();
+  assert.equal(await frame.getByLabel('Gain de la manche', { exact: true }).textContent(), '950,00');
+  await frame.getByRole('button', { name: 'Augmenter la mise' }).click();
+  assert.equal(await frame.getByLabel('Gain de la manche', { exact: true }).textContent(), '950,00');
+  await frame.getByRole('button', { name: 'Choisir la difficulté' }).click();
+  await frame.getByRole('button', { name: /^Calme/ }).click();
+  await frame.getByRole('button', { name: 'Terminé', exact: true }).click();
+  assert.equal(await frame.getByLabel('Gain de la manche', { exact: true }).textContent(), '950,00');
+  assert.equal(await frame.locator('.multiplier').textContent(), '×1,90');
+  assert((await frame.locator('.board-footer').textContent()).includes('5 pièges'));
+  await page.locator('iframe').screenshot({ path: 'reports/result.png' });
+  await frame.getByRole('button', { name: 'Nouvelle partie', exact: true }).click();
+  await frame.getByRole('button', { name: /^Commencer / }).click();
+  await frame.getByRole('button', { name: 'Révéler la case 4', exact: true }).click();
+  await frame.locator('main[data-scenario="lost"]').waitFor();
+  await page.locator('iframe').screenshot({ path: 'reports/lost.png' });
+  assert.equal(await frame.getByLabel('Gain de la manche', { exact: true }).textContent(), '1 000,00');
+  await frame.getByRole('button', { name: 'Ouvrir le menu' }).click();
+  await frame.getByRole('dialog', { name: 'Menu du jeu' }).waitFor();
+  await page.keyboard.press('Escape');
+  assert.equal(await frame.getByRole('dialog').isVisible(), false);
+  await page.goto(`${url}/scene?scenario=cashedOut`);
+  await page.locator('main[data-scenario="cashedOut"]').waitFor();
+  await verifyMotion(browser, url);
+  assert.deepEqual(errors, [], errors.join('\n'));
+  console.log('OK difficulté, mise verrouillée, révélations, encaissement figé, piège et fermeture au clavier.');
+} finally { await browser?.close(); server.kill(); }

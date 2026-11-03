@@ -1,0 +1,124 @@
+  .hud { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(170px, 0.9fr) minmax(170px, 0.8fr) minmax(300px, 1.4fr) minmax(220px, 1.1fr); grid-template-areas: 'round automatic bet primary'; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+  .card { border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+  .caption { color: var(--muted); font-size: 13px; font-weight: 600; }
+  button:disabled { opacity: 0.4; }
+
+  /* Cartes d'information (manche, auto) : la teinte (--tone, --tint) suit leur état. */
+  .tile { --tone: var(--muted); --tint: #ffffff0a; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 12px 16px; overflow: hidden; color: var(--text); text-align: left; border-color: var(--tint); background: linear-gradient(135deg, var(--tint), transparent 65%), var(--surface-2); transition: background-color 0.3s, border-color 0.3s; }
+  .tile-icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px; color: var(--tone); background: var(--tint); }
+  .tile-text { flex: 1; min-width: 0; display: grid; gap: 2px; }
+  .tile-value { display: flex; align-items: baseline; gap: 6px; margin: 2px 0 0; white-space: nowrap; }
+  .tile-value output { color: var(--text); font-size: 26px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tile-value small { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .tile-detail { overflow: hidden; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+
+  .round { grid-area: round; }
+  .round[data-phase='queued'] { --tone: var(--gold); --tint: #fbbf241f; }
+  .round[data-phase='running'] { --tone: var(--win); --tint: #34d3991a; }
+  .round[data-phase='cashedOut'] { --tone: var(--win); --tint: #34d3992e; }
+  .round[data-phase='ended'] { --tone: var(--loss); --tint: #fb718524; }
+  .round.targeted { --tone: var(--accent); --tint: #a78bfa1f; }
+  .round:not([data-phase='betting']) output, .round.targeted output { color: var(--tone); }
+  .round[data-phase='cashedOut'] .tile-detail { color: var(--win); }
+
+  /* Carte de mise : montant avec − / +, puis sélecteur segmenté des montants rapides. */
+  .bet { grid-area: bet; min-width: 0; display: grid; gap: 8px; padding: 8px; }
+  .stepper { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
+  .step { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--text); background: var(--surface-3); transition: background-color 0.15s, transform 0.1s; }
+  .step:hover:enabled { border-color: var(--line-strong); background: #352c55; }
+  .step:active:enabled { transform: scale(0.94); }
+  .amount { display: grid; justify-items: center; gap: 2px; min-width: 0; min-height: 44px; padding: 2px 8px; border: 0; border-radius: 10px; color: var(--text); background: transparent; }
+  .amount:hover:enabled { background: #ffffff08; }
+  .amount:disabled { opacity: 1; cursor: default; }
+  .amount .caption { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 1.2; }
+  .amount strong { display: inline-flex; align-items: baseline; gap: 5px; font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .amount strong svg { align-self: center; color: var(--muted); }
+  .amount small { color: var(--muted); font-size: 13px; font-weight: 600; }
+  .bet.locked .amount .caption { color: var(--gold); }
+  .chips { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: #0e0a19; }
+  /* Pastille unique qui glisse sous les boutons : largeur d'une colonne, décalée de --i colonnes (3 px d'écart). */
+  .indicator { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc((100% - 15px) / 4); border-radius: 9px; background: linear-gradient(180deg, #8b5cf6, #6d28d9); box-shadow: 0 4px 12px -4px #7c3aed99, inset 0 1px 0 #ffffff33; transform: translateX(calc(var(--i) * (100% + 3px))); transition: transform 0.35s cubic-bezier(0.3, 1.3, 0.5, 1), opacity 0.2s; }
+  .indicator.hidden { opacity: 0; }
+  .bet.locked .indicator { opacity: 0.4; }
+  .chips .chip { position: relative; min-height: 38px; border: 0; border-radius: 9px; color: var(--muted); background: transparent; transition: background-color 0.15s, color 0.25s; }
+  .chips .chip:hover:enabled:not([aria-pressed='true']) { color: var(--text); background: #ffffff0a; }
+  .chips .chip[aria-pressed='true'] { color: #fff; }
+  .amount-value { display: inline-block; }
+  @media (prefers-reduced-motion: reduce) { .indicator { transition: none; } }
+  .options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .chip { min-height: 40px; padding: 4px; border: 1px solid var(--line-strong); border-radius: 10px; color: var(--text); background: transparent; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .chip:hover:enabled:not([aria-pressed='true']) { background: var(--surface-3); }
+  .chip[aria-pressed='true'] { border-color: var(--accent); color: #e9e2ff; background: var(--accent-soft); }
+
+  .auto { grid-area: automatic; min-height: 0; font: inherit; }
+  .auto.enabled { --tone: var(--accent); --tint: #a78bfa1f; border-color: #a78bfa66; }
+  .auto:hover { border-color: var(--line-strong); background: linear-gradient(135deg, var(--tint), transparent 65%), var(--surface-3); }
+  .auto.enabled:hover { border-color: var(--accent); }
+  .auto .tile-value strong { color: var(--muted); font-size: 22px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .auto.enabled .tile-value strong { color: var(--tone); }
+  .flags { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--muted); font-size: 13px; }
+  .flags span { display: inline-flex; align-items: center; gap: 5px; opacity: 0.6; }
+  .flags span::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .flags .on { color: var(--accent); opacity: 1; }
+  .chevron { flex: none; display: grid; color: var(--muted); transition: transform 0.15s; }
+  .auto:hover .chevron { color: var(--text); transform: translateX(2px); }
+
+  /* Bouton principal : la couleur de fond (--glow) passe en fondu d'une action à l'autre,
+     le dégradé clair posé dessus reste le même. */
+  .primary { --glow: #22c55e; position: relative; grid-area: primary; display: grid; place-content: center; min-height: 64px; padding: 8px 16px; overflow: hidden; border: 0; border-radius: 14px; color: #052e1a; background-color: var(--glow); background-image: linear-gradient(180deg, #ffffff47, #ffffff00 55%, #0000001f); box-shadow: 0 10px 28px -10px var(--glow), inset 0 1px 0 #ffffff66; transition: background-color 0.3s, color 0.3s, box-shadow 0.3s, filter 0.15s, transform 0.12s; }
+  .primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+  .primary:active { filter: brightness(0.97); transform: translateY(1px) scale(0.98); }
+  .primary[data-action='cashout'] { --glow: #f59e0b; color: #3a2200; animation: glow 1.6s ease-in-out infinite; }
+  .primary[data-action='cancel'] { --glow: #e11d48; color: #fff; }
+  .primary-content { position: relative; display: flex; align-items: center; gap: 12px; }
+  .primary-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 50%; background: #00000021; }
+  .primary[data-action='cancel'] .primary-icon { background: #ffffff2e; }
+  .primary[data-action='bet'] .primary-icon svg { fill: currentColor; stroke-width: 0; transform: translateX(1px); }
+  .primary-text { display: grid; gap: 2px; text-align: left; }
+  .primary-label { font-size: 22px; font-weight: 800; line-height: 1.1; }
+  .primary-detail { font-size: 14px; font-weight: 600; opacity: 0.8; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* Reflet qui traverse le bouton au survol, et régulièrement pendant « Encaisser ». */
+  .shine { position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, #ffffff59, transparent); transform: skewX(-20deg); pointer-events: none; }
+  .primary:hover .shine { animation: shine 0.7s ease-out; }
+  .primary[data-action='cashout'] .shine { animation: shine 2.4s ease-in-out infinite; }
+  /* Barre d'attente du départ, pendant « Annuler ». */
+  .waiting { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; overflow: hidden; background: #ffffff33; }
+  .waiting::after { content: ''; position: absolute; inset: 0; width: 40%; border-radius: 2px; background: #fff; animation: waiting 1.4s ease-in-out infinite; }
+  @keyframes shine { from { left: -60%; } 60%, to { left: 130%; } }
+  @keyframes glow { 50% { box-shadow: 0 10px 36px -6px var(--glow), 0 0 0 4px #f59e0b40, inset 0 1px 0 #ffffff66; } }
+  @keyframes waiting { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .primary, .primary .shine, .primary:hover .shine { animation: none; }
+    .waiting::after { width: 100%; opacity: 0.5; animation: none; }
+  }
+
+  .hud[data-layout='tablet'] { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: 'round primary primary' 'automatic bet bet'; }
+  .hud[data-layout='tablet'] .primary { min-height: 72px; }
+
+  .hud[data-layout='portrait'], .hud[data-layout='landscape'] { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: 'round automatic' 'bet bet' 'primary primary'; gap: 8px; padding: 10px; border-radius: 18px; }
+  .hud[data-layout='portrait'] { grid-template-areas: 'primary primary' 'bet bet' 'round automatic'; }
+  .hud[data-layout='portrait'] .tile, .hud[data-layout='landscape'] .tile { min-height: 64px; gap: 8px; padding: 10px 12px; }
+  .hud[data-layout='portrait'] .tile-icon, .hud[data-layout='landscape'] .tile-icon { display: none; }
+  .hud[data-layout='portrait'] .tile-value output, .hud[data-layout='landscape'] .tile-value output { font-size: 22px; }
+  .hud[data-layout='portrait'] .auto .tile-value strong, .hud[data-layout='landscape'] .auto .tile-value strong { font-size: 20px; }
+  .hud[data-layout='portrait'] .flags, .hud[data-layout='landscape'] .flags { gap: 4px 8px; font-size: 12px; }
+  .hud[data-layout='portrait'] .chip { min-height: 44px; }
+  .hud[data-layout='landscape'] { grid-template-rows: minmax(64px, 1fr) auto minmax(56px, 1fr); }
+  .hud[data-layout='landscape'] .primary { min-height: 56px; }
+
+  .selected { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
+  .selected strong { margin-left: 4px; color: var(--text); font-size: 18px; }
+  .options .chip { min-height: 48px; font-size: 16px; }
+  .target { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .target output { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .target.inactive output { color: var(--muted); }
+
+/* Le même comportement que Crash pour les actions temporairement occupées. */
+.primary[data-action='busy'] { --glow: #8b5cf6; color: #fff; }
+.primary:disabled { opacity: .65; cursor: default; filter: none; transform: none; }
+.primary:disabled:hover .shine { animation: none; }
+.primary[data-action='busy'] .primary-icon { background: #ffffff24; }
+@media (prefers-reduced-motion: reduce) {
+  .hud .primary, .hud .primary .shine, .hud .primary:hover .shine, .hud .waiting::after { animation: none; transition: none; }
+  .hud .indicator, .hud .tile, .hud .step, .hud .chevron, .hud .chips .chip { transition: none; }
+}

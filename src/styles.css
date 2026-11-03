@@ -1,0 +1,11 @@
+:root { font-family:Arial,sans-serif; color:#e8edf7; background:#10141d; font-synthesis:none; color-scheme:dark; }
+* { box-sizing:border-box; }
+body { margin:0; }
+button,select { font:inherit; }
+button,select,a { -webkit-tap-highlight-color:transparent; }
+button,select { min-height:44px; padding:10px 14px; border:1px solid #536177; border-radius:8px; background:#222c3c; color:inherit; }
+button { cursor:pointer; }
+button:disabled { cursor:default; opacity:.55; }
+button[aria-pressed='true'] { background:#304f70; border-color:#8ec8ff; }
+:focus-visible { outline:3px solid #9ed3ff; outline-offset:3px; }
+a { color:#a9d5ff; }

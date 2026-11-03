@@ -1,0 +1,35 @@
+{
+  "name": "maquette-revelation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "dev": "vite dev --host 127.0.0.1 --port 3052 --strictPort",
+    "prepare": "svelte-kit sync",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4052 --strictPort",
+    "storybook": "storybook dev -p 6052 --no-open --disable-telemetry",
+    "build-storybook": "storybook build --disable-telemetry",
+    "test:browser": "node scripts/verify-preview.mjs"
+  },
+  "dependencies": {
+    "pixi.js": "8.8.1",
+    "svelte": "5.20.5"
+  },
+  "devDependencies": {
+    "@storybook/sveltekit": "9.0.15",
+    "@sveltejs/adapter-static": "3.0.8",
+    "@sveltejs/kit": "2.17.3",
+    "@sveltejs/vite-plugin-svelte": "5.0.3",
+    "@types/node": "22.13.5",
+    "playwright": "1.50.1",
+    "storybook": "9.0.15",
+    "svelte-check": "4.1.4",
+    "typescript": "5.8.3",
+    "vite": "6.2.0"
+  }
+}
