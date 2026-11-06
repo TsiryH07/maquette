@@ -1,6 +1,8 @@
 # Maquette Révélation
 
-Cet atelier reprend le design actuel du Crash : fond violet sombre, solde et paramètres en haut, grande zone de jeu, cartes de commande et action principale verte. Il présente une famille différente : on révèle des cases, puis on choisit d'encaisser.
+Cet atelier présente une grille de 16 cases : on révèle des trésors, puis on choisit d'encaisser. Le portrait reprend l'univers de Poulet Banane du Web SDK : savane en plein écran, cartes violettes ornementées, bouton vert et panneau compact au pied du jeu. Le menu reste en bas à gauche et le logo du studio en haut à droite.
+
+Les quatre images de `src/assets/banane/` sont des copies des sprites du Web SDK (`savane_portrait`, dos et face de carte, `play_vert`). Le SDK reste une référence en lecture seule. L'adaptation est isolée dans `src/game/portrait.css` et `src/components/BananeBackdrop.svelte` ; les trois autres formats gardent leur présentation.
 
 ## Ouvrir
 
@@ -23,7 +25,7 @@ Ouvrir **http://localhost:3052**. Si nécessaire, installer d'abord avec `npm in
 
 La mise et la difficulté sont bloquées pendant la partie. Le gain encaissé reste identique si l'on prépare ensuite une autre mise.
 
-Les cartes et les animations du panneau reprennent celles du Crash : chiffre de mise animé, sélection violette glissante, reflet sur le bouton et transitions de son contenu. Le bouton Encaisser reprend aussi la teinte et la pulsation du Crash. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
+Le chiffre de mise et le contenu du bouton restent animés. Hors portrait, le panneau conserve la sélection violette glissante, le reflet du bouton et la pulsation de l'encaissement. En portrait, le bouton conserve l'habillage vert de Poulet Banane. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
 
 La grille est fixe pour présenter le parcours. La case 4 contient un piège dans les trois niveaux ; les cases 1 et 2 sont des trésors. Les multiplicateurs sont des valeurs de présentation, sans calcul de probabilités de production. Il n'y a ni hasard, ni paiement, ni compte réel. Le solde reste fictif. Aucun appel au serveur de jeux.
 
@@ -37,6 +39,7 @@ Storybook : `npm run storybook`, puis **http://localhost:6052**. Les vues sont d
 
 - `src/game/Game.svelte` : grille, déroulement de la démonstration et disposition des écrans.
 - `src/components/RevealHud.svelte` : gain, difficulté, mise et action principale.
+- `../src/lib/DifficultySelector.svelte` : même sélecteur à trois niveaux que les Instantanés, avec les pièges propres à chaque difficulté.
 - `src/game.config.ts` : montants, pièges et multiplicateurs fictifs.
 - `src/game/scenarios.ts` : vues à sélectionner dans l'atelier.
 - `src/components/Sheet.svelte` : fenêtres de choix et de paramètres.

@@ -40,20 +40,29 @@ try {
     assert(primary.y >= viewport.y && primary.y + primary.height <= viewport.y + viewport.height + 1, 'Action principale visible');
     const cell = await frame.locator('.cell').first().boundingBox();
     assert(cell.width >= 44 && cell.height >= 44, `Cases tactiles suffisantes : ${layout}, ${cell.width} × ${cell.height}`);
+    if (layout === 'portrait') {
+      await frame.locator('.banane-backdrop img').evaluate(image => image.decode());
+      const grid = await frame.locator('.grid').boundingBox();
+      assert(grid.width >= width * .8 && grid.height > grid.width,'La grille de cartes occupe la largeur du portrait.');
+      assert.equal(await frame.locator('.cell').count(),16,'Révélation conserve ses 16 cases.');
+    } else assert.equal(await frame.locator('.banane-backdrop').count(),0,'Le nouvel habillage est réservé au portrait.');
     await page.locator('iframe').screenshot({ path: `reports/${layout}.png` });
     console.log(`OK ${name} : ${width} × ${height}, aucune sortie d’écran.`);
   }
   await page.getByRole('button', { name: 'Mobile portrait', exact: true }).click();
   const frame = page.frameLocator('iframe');
   await frame.getByRole('button', { name: 'Augmenter la mise', exact: true }).click();
-  await frame.getByRole('button', { name: 'Commencer 20 FCFA', exact: true }).waitFor();
-  await frame.getByRole('group', { name: 'Montants rapides' }).getByRole('button', { name: '500 FCFA', exact: true }).click();
+  await frame.locator('.amount-value').filter({ hasText: /^20$/ }).waitFor();
+  await frame.getByRole('button', { name: 'Commencer', exact: true }).waitFor();
+  await frame.getByRole('button', { name: 'Modifier le montant de la mise', exact: true }).click();
+  await frame.getByRole('group', { name: 'Montants de mise' }).getByRole('button', { name: '500 FCFA', exact: true }).click();
+  await frame.getByRole('button', { name: 'Terminé', exact: true }).click();
   await frame.getByRole('button', { name: 'Choisir la difficulté', exact: true }).click();
   await frame.getByRole('button', { name: /^Expert/ }).click();
-  await frame.locator('.difficulty-selection').evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
+  assert.equal(await frame.getByRole('group', { name: 'Niveaux de difficulté' }).getByRole('button', { name: 'Expert 5 pièges', exact: true }).getAttribute('aria-pressed'), 'true');
   await page.locator('iframe').screenshot({ path: 'reports/options.png' });
   await frame.getByRole('button', { name: 'Terminé', exact: true }).click();
-  await frame.getByRole('button', { name: 'Commencer 500 FCFA', exact: true }).click();
+  await frame.getByRole('button', { name: 'Commencer', exact: true }).click();
   await frame.locator('main[data-scenario="playing"]').waitFor();
   assert(await frame.getByRole('button', { name: 'Augmenter la mise' }).isDisabled());
   assert(await frame.getByRole('button', { name: 'Choisir la difficulté' }).isDisabled());
@@ -76,7 +85,7 @@ try {
   assert((await frame.locator('.board-footer').textContent()).includes('5 pièges'));
   await page.locator('iframe').screenshot({ path: 'reports/result.png' });
   await frame.getByRole('button', { name: 'Nouvelle partie', exact: true }).click();
-  await frame.getByRole('button', { name: /^Commencer / }).click();
+  await frame.getByRole('button', { name: 'Commencer', exact: true }).click();
   await frame.getByRole('button', { name: 'Révéler la case 4', exact: true }).click();
   await frame.locator('main[data-scenario="lost"]').waitFor();
   await page.locator('iframe').screenshot({ path: 'reports/lost.png' });

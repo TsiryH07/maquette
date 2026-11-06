@@ -30,11 +30,11 @@ Le lien « Ouvrir l'écran seul » enlève les commandes de l'atelier : la maque
 
 L'écran se lit de haut en bas :
 
-- **La barre du haut** montre le nom du jeu, le solde fictif (1 000,00 FCFA) et le bouton du menu (son et règles).
+- **La barre du haut** montre le logo du jeu à gauche, le logo du studio à droite et le solde fictif sur les grands écrans. Le menu ≡ (son et règles) est en bas à gauche du panneau de commandes.
 - **La zone du jeu** montre les multiplicateurs des dernières manches, l'étape de la partie (« Mises ouvertes », « En cours », « Encaissé », « Crash »), le grand multiplicateur et la courbe dessinée avec PixiJS. Les couleurs suivent l'étape : violet en vol, vert après un encaissement, rouge au crash.
 - **Le panneau** regroupe quatre blocs : le montant de la manche, la mise, « Auto » et le bouton principal.
 
-Le bouton principal est large et affiche toujours le montant concerné. Il est vert pour « Miser », ambre pour « Encaisser » pendant la manche et rouge pour « Annuler » une mise en attente. Le bloc de la manche affiche « Gain potentiel » pendant la manche, « Encaissé » après un encaissement et « Mise perdue » après un crash. Sur ordinateur, les blocs sont alignés sur une ligne ; sur tablette et sur mobile, le bouton principal passe en bas, sur toute la largeur, pour être facile à toucher.
+Le bouton principal affiche l'action sans répéter la mise : « Miser » ou « Annuler ». Pendant la manche, « Encaisser » conserve le montant du gain à encaisser. Le bouton est vert pour miser, ambre pour encaisser et rouge pour annuler une mise en attente. Le bloc de la manche affiche « Gain potentiel » pendant la manche, « Encaissé » après un encaissement et « Mise perdue » après un crash. Sur ordinateur, les blocs sont alignés sur une ligne ; en portrait, le bouton est rond dans le panneau compact à deux lignes.
 
 Le parcours visuel est le suivant : choisir une mise, cliquer sur « Miser », puis « Encaisser ». Le montant affiché correspond à la mise multipliée par le multiplicateur de la vue, au centime près. La mise est verrouillée pendant la manche et redevient modifiable après son règlement.
 

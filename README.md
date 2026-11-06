@@ -36,6 +36,14 @@ Les anciennes commandes `dev:crash`, `dev:instantanees`, `dev:revelation`, `dev:
 
 Ce sont des **maquettes locales avec des montants fictifs**. Les résultats servent à présenter les écrans ; aucun paiement ni serveur de jeu n'est utilisé. Le Web SDK de production reste une référence en lecture.
 
+Les quatre scènes partagent un décor vectoriel plein écran, avec une ambiance propre à chaque famille. Les commandes flottent sur un panneau translucide ; la grille, les dés ou les rouleaux gardent une zone dégagée. Le décor commun et son style sont dans `src/lib/SceneBackdrop.svelte` et `src/lib/scene.css`, utilisés aussi par les ateliers séparés et Storybook.
+
+Le panneau de commandes est la seule surface de fond : ses blocs de gain, de mise et d'options ne possèdent ni fond ni bordure propres. Les montants rapides sont posés directement dans le panneau, avec un soulignement pour le montant choisi. Les rouleaux n'ont plus de cadre extérieur. Les véritables éléments du jeu, comme les cases à révéler, conservent leur forme.
+
+Le logo du jeu reste en haut à gauche ; le logo du studio Baobab est en haut à droite. Le menu ≡ s'ouvre depuis le coin inférieur gauche du panneau, dans tous les formats. `src/lib/StudioLogo.svelte` utilise une copie locale du logo existant du studio ; `src/lib/PanelMenu.svelte` contient le bouton commun. Aucun fichier du SDK n'est modifié.
+
+En portrait, le panneau occupe environ 15 % de l'écran de référence (390 × 844), sur deux lignes : solde fictif et dernier gain, puis mise avec −/+, bouton rond et Auto (difficulté pour Révélation). Toucher la mise ouvre tous les montants. Les commandes gardent des cibles tactiles d'au moins 44 px ; sur les téléphones plus courts, le panneau conserve une hauteur minimale de 112 px. Le dernier gain reste affiché pendant la manche suivante.
+
 Pour reconnaître chaque famille :
 
 - **Crash** : suivre le multiplicateur et encaisser avant le crash.

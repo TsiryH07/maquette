@@ -1,0 +1,183 @@
+/* Le décor occupe le viewport entier ; le jeu garde une zone libre de commandes. */
+.game.immersive[data-layout] {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  --muted:#c0b9d1;
+  --surface:#171323eb;
+  --surface-2:#211b31e8;
+  --surface-3:#342945;
+  --panel-background:linear-gradient(135deg,#372a494d,transparent 60%),#100d1cd9;
+  background:#101322;
+}
+.game.immersive > .topbar { position:relative; z-index:2; min-height:48px; }
+.game.immersive > .content { position:relative; z-index:1; }
+.game.immersive .playfield,
+.game.immersive .stage { border:0; border-radius:0; background:transparent; }
+.game.immersive .hud {
+  position:relative;
+  width:100%;
+  max-width:1280px;
+  justify-self:center;
+  border:1px solid #e4d5ff26;
+  background:var(--panel-background);
+  box-shadow:0 20px 60px -12px #0009,inset 0 1px 0 #ffffff0d;
+  backdrop-filter:blur(18px);
+}
+/* Une seule surface : les informations et réglages ne sont plus des cartes. */
+.game.immersive .hud > .card {
+  border:0;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+}
+.game.immersive .hud .tile-icon,
+.game.immersive .hud .primary-icon { background:none; }
+.game.immersive .hud .chips {
+  border:0;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+}
+.game.immersive .hud .chips .chip { border:0; border-radius:0; background:none; }
+.game.immersive .hud .indicator {
+  top:auto;
+  bottom:2px;
+  height:2px;
+  border-radius:0;
+  background:var(--accent);
+  box-shadow:none;
+}
+.game.immersive .hud > .auto:hover .caption,
+.game.immersive .hud > .auto:hover .compact-label { color:var(--text); }
+.game.immersive .hud > .auto.enabled .tile-icon,
+.game.immersive .hud > .auto.enabled .compact-label { color:var(--accent); }
+.game.immersive .brand { filter:drop-shadow(0 2px 8px #0008); }
+.game.immersive .balance { box-shadow:0 5px 20px #0003; backdrop-filter:blur(12px); }
+/* Le solde sur le décor a son propre fond ; celui du panneau portrait reste simple. */
+.game.immersive .topbar .balance {
+  padding:3px 12px;
+  border:1px solid #e4d5ff26;
+  border-radius:10px;
+  background:var(--panel-background);
+  box-shadow:none;
+  backdrop-filter:blur(18px);
+}
+.game.immersive .topbar .balance-icon { display:none; }
+.game.immersive .topbar .balance-caption { color:#d1d5db; font-size:11px; font-weight:400; letter-spacing:0; text-transform:none; }
+.game.immersive .topbar .balance-value strong { color:#fff; font-size:22px; font-weight:400; text-shadow:none; }
+.game.immersive .topbar .balance-value small { color:#d1d5db; font-size:12px; font-weight:400; }
+.game.immersive .hint { color:#d7cfdf; text-shadow:0 2px 8px #0009; }
+.game.immersive .instruction {
+  width:100%;
+  margin:0;
+  font-size:clamp(12px,3.7vw,15px);
+  font-weight:400;
+  line-height:1.4;
+  text-align:center;
+  white-space:normal;
+  overflow-wrap:break-word;
+}
+.game.immersive .hud .tile-detail {
+  overflow:visible;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  text-overflow:clip;
+}
+.game.immersive .board-heading,
+.game.immersive .board-footer,
+.game.immersive .result,
+.game.immersive .hero-caption { text-shadow:0 2px 10px #0009; }
+.game.immersive .history { left:0; right:0; }
+.game.immersive .crash-scene { position:absolute; inset:0; pointer-events:none; }
+.game.immersive[data-layout='landscape'] .hud { max-width:none; }
+.game.immersive .hud[data-layout='desktop'],
+.game.immersive .hud[data-layout='tablet'] { padding-left:68px; }
+.game.immersive .hud[data-layout='landscape'] .primary { margin-left:56px; }
+
+/* Les blocs absents ne réservent plus une colonne vide. */
+.game.immersive .hud.no-round[data-layout='desktop'] {
+  grid-template-columns:minmax(140px,.8fr) minmax(250px,1.4fr) minmax(180px,1fr);
+  grid-template-areas:'automatic bet primary';
+}
+.game.immersive .hud.no-round[data-layout='tablet'] { grid-template-areas:'automatic primary primary' 'bet bet bet'; }
+.game.immersive .hud.no-round[data-layout='landscape'] { grid-template-areas:'automatic automatic' 'bet bet' 'primary primary'; }
+.game.immersive .hud.slot-controls[data-layout='desktop'] {
+  grid-template-columns:minmax(140px,.7fr) minmax(250px,1.4fr) minmax(180px,1fr) 76px;
+  grid-template-areas:'round bet primary automatic';
+}
+.game.immersive .hud.slot-controls[data-layout='tablet'] {
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) 76px;
+  grid-template-areas:'round primary automatic' 'bet bet bet';
+}
+.game.immersive .hud.slot-controls.no-round[data-layout='desktop'],
+.game.immersive .hud.slot-controls.no-round[data-layout='tablet'] {
+  grid-template-columns:minmax(220px,1.4fr) minmax(140px,1fr) 76px;
+  grid-template-areas:'bet primary automatic';
+}
+.game.immersive .hud.slot-controls[data-layout='landscape'] { grid-template-columns:minmax(0,1fr) 76px; }
+.game.immersive .hud.slot-controls.no-round[data-layout='landscape'] {
+  align-self:end;
+  grid-template-areas:'bet bet' 'primary automatic';
+  grid-template-rows:auto 60px;
+}
+
+/* Les fenêtres ont également une seule surface, sans sous-panneaux encadrés. */
+.game.immersive .sheet .mode-panel,
+.game.immersive .sheet .mode-tabs,
+.game.immersive .sheet .round-options,
+.game.immersive .sheet .difficulty-summary {
+  border:0;
+  border-radius:0;
+  background:none;
+  box-shadow:none;
+}
+.game.immersive .sheet .panel-icon,
+.game.immersive .sheet .summary-icon { background:none; }
+
+/* Portrait : deux lignes, avec des cibles tactiles de 44 px au minimum. */
+.game.immersive[data-layout='portrait'] .topbar .balance { display:none; }
+.game.immersive .hud[data-layout='portrait'] {
+  --action-size:clamp(44px,calc(20vw - 20px),60px);
+  height:clamp(112px,15dvh,128px);
+  grid-template-columns:minmax(0,1fr) var(--action-size) var(--action-size);
+  grid-template-rows:minmax(28px,1fr) 60px;
+  grid-template-areas:'stats stats stats' 'bet primary automatic';
+  align-items:center;
+  gap:6px;
+  column-gap:4px;
+  padding:8px;
+  border-radius:22px;
+}
+.game.immersive .hud[data-layout='portrait'] > .round,
+.game.immersive .hud[data-layout='portrait'] .bet .chips,
+.game.immersive .hud[data-layout='portrait'] .amount .caption,
+.game.immersive .hud[data-layout='portrait'] .amount strong > small,
+.game.immersive .hud[data-layout='portrait'] .amount strong > svg,
+.game.immersive .hud[data-layout='portrait'] .primary-text,
+.game.immersive .hud[data-layout='portrait'] .auto .tile-text,
+.game.immersive .hud[data-layout='portrait'] .auto .chevron { display:none; }
+.game.immersive .hud[data-layout='portrait'] .panel-menu { left:8px; bottom:16px; }
+.game.immersive .hud[data-layout='portrait'] > .bet { display:block; margin-left:50px; padding:0; border:0; background:transparent; }
+.game.immersive .hud[data-layout='portrait'] .stepper { grid-template-columns:44px minmax(0,1fr) 44px; gap:0; }
+.game.immersive .hud[data-layout='portrait'] .amount { padding:0 2px; gap:2px; }
+.game.immersive .hud[data-layout='portrait'] .amount::before { content:'Mise'; color:var(--muted); font-size:10px; line-height:1.2; }
+.game.immersive .hud[data-layout='portrait'] .amount strong { font-size:17px; gap:0; }
+.game.immersive .hud[data-layout='portrait'] .primary {
+  width:var(--action-size); height:var(--action-size); min-height:var(--action-size); padding:0; border-radius:50%;
+}
+.game.immersive .hud[data-layout='portrait'] .primary-content { display:grid; place-items:center; gap:0; }
+.game.immersive .hud[data-layout='portrait'] .primary-icon { width:var(--action-size); height:var(--action-size); background:transparent; }
+.game.immersive .hud[data-layout='portrait'] > .auto {
+  width:var(--action-size); height:var(--action-size); min-height:var(--action-size); padding:2px; gap:2px;
+  display:flex; flex-direction:column; justify-content:center; border-radius:16px;
+}
+.game.immersive .hud[data-layout='portrait'] .auto .tile-icon { display:grid; order:0; width:20px; height:20px; background:transparent; color:var(--tone,var(--accent)); }
+.game.immersive .hud[data-layout='portrait'] .auto .tile-icon svg { width:20px; height:20px; }
+.game.immersive .hud[data-layout='portrait'] .compact-label { order:1; font-size:11px; font-weight:650; line-height:1.2; }
+.game.immersive .hud[data-layout='portrait'] > .auto-button { padding:2px; gap:1px; }
+.game.immersive .hud[data-layout='portrait'] > .auto-button small { position:absolute; top:-2px; right:-2px; min-width:14px; height:14px; padding:0 3px; border-radius:7px; background:var(--surface-3); font-size:9px; line-height:14px; }
+@media (max-height:840px) {
+  .game.immersive .hud[data-layout='portrait'] { padding-block:6px; }
+  .game.immersive .hud[data-layout='portrait'] .panel-menu { bottom:14px; }
+}

@@ -50,6 +50,7 @@ Si Chromium manque : `npx playwright install chromium`. Le test navigateur déma
 
 - `src/game/Game.svelte` : assemblage, solde, paramètres et parcours de démonstration.
 - `src/components/DiceStage.svelte` : dé, objectif et choix du risque, dessinés en HTML/CSS.
+- `../src/lib/DifficultySelector.svelte` : sélecteur de difficulté commun avec Révélation, à trois niveaux, verrouillé pendant le lancer.
 - `src/components/InstantHud.svelte` : gain, mise, jouer et options automatiques.
 - `src/components/Sheet.svelte` : fenêtres, dont le panneau du bas sur mobile.
 - `src/game/scenarios.ts` : vues et exemples des risques.

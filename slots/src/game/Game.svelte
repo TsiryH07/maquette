@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
+  import SceneBackdrop from '../../../src/lib/SceneBackdrop.svelte';
+  import StudioLogo from '../../../src/lib/StudioLogo.svelte';
+  import '../../../src/lib/scene.css';
   import config from '../game.config';
   import SlotBoard from '../components/SlotBoard.svelte';
+  import SlotActions from '../components/SlotActions.svelte';
   import SlotsHud from '../components/SlotsHud.svelte';
   import Icon from '../components/Icon.svelte';
   import Sheet from '../components/Sheet.svelte';
@@ -87,21 +91,25 @@
   onDestroy(stopTimers);
 </script>
 
-<main class="game" data-layout={activeLayout} data-scenario={phase} bind:this={host}>
+<main class="game immersive" data-layout={activeLayout} data-scenario={phase} bind:this={host}>
+  <SceneBackdrop family="slots" />
   <header class="topbar">
-    <div class="brand"><span class="logo" aria-hidden="true"><Icon name="star" size={18}/></span><strong>SLOTS</strong><span class="tag">Démo · séquence fixe</span></div>
-    <div class="account"><p class="balance"><span class="balance-icon" aria-hidden="true"><Icon name="wallet" size={18}/></span><span class="balance-text"><span class="balance-caption">Solde fictif</span><span class="balance-value"><strong>{formatDecimal(config.balance)}</strong><small>FCFA</small></span></span></p><button class="settings" aria-label="Ouvrir le menu" title="Paramètres et règles" onclick={() => menu.open()}><Icon name="gear" size={22}/></button></div>
+    <div class="brand" role="img" aria-label="Logo du jeu Slots"><span class="logo" aria-hidden="true"><Icon name="star" size={18}/></span><strong>SLOTS</strong></div>
+    <div class="account"><p class="balance"><span class="balance-icon" aria-hidden="true"><Icon name="wallet" size={18}/></span><span class="balance-text"><span class="balance-caption">Solde fictif</span><span class="balance-value"><strong>{formatDecimal(config.balance)}</strong><small>FCFA</small></span></span></p><StudioLogo /></div>
   </header>
 
   <div class="content">
     <section class="playfield" data-phase={phase} aria-label="Zone du jeu slots">
-      <div class="stage-top"><span class="phase">{current.phase}</span><span class="lines">1 ligne · 5 rouleaux</span></div>
+      <div class="stage-top"><p class="hint instruction" aria-live="polite">{current.hint}</p></div>
       <div class="board-area"><SlotBoard scenario={phase} {turbo} winningSymbol={resultFactor === 1.2 ? 2 : 0}/></div>
-      <div class="result" aria-live="polite">{#if phase === 'win'}<strong>+{formatMoney(lastWin)}</strong>{:else if phase === 'freeSpins'}<strong>{freeRemaining} tours gratuits</strong>{/if}<span>{current.hint}</span></div>
+      <div class="result" aria-live="polite">{#if phase === 'win'}<strong>+{formatMoney(lastWin)}</strong>{:else if phase === 'freeSpins'}<strong>{freeRemaining} tours gratuits</strong>{/if}</div>
     </section>
-    <SlotsHud layout={activeLayout} {amount} locked={choicesLocked} win={lastWin} {turbo} {autoRemaining} {freeRemaining}
-      onsetamount={(value) => { if (!choicesLocked && !freeRemaining) amount = value; }}
-      onmodes={() => modes.open()} onspin={spin} onstop={stopAuto}/>
+    <div class="controls-dock">
+      <SlotActions {turbo} locked={choicesLocked} bonusLocked={choicesLocked || freeRemaining > 0} onturbo={() => { if (!choicesLocked) turbo = !turbo; }} onbonus={() => modes.open('bonus')} />
+      <SlotsHud layout={activeLayout} {amount} locked={choicesLocked} win={lastWin} {turbo} {autoRemaining} {freeRemaining}
+        onsetamount={(value) => { if (!choicesLocked && !freeRemaining) amount = value; }}
+        onmodes={() => modes.open('auto')} onspin={spin} onstop={stopAuto} onmenu={() => menu.open()}/>
+    </div>
   </div>
 
   <Sheet bind:this={menu} title="Paramètres et règles" closeLabel="Fermer le menu" layout={activeLayout}>
@@ -111,36 +119,30 @@
     <p class="note">Solde fixe, aucun compte, aucune mise réelle, aucun paiement. Les sons sont illustratifs.</p>
   </Sheet>
 
-  <GameModes bind:this={modes} layout={activeLayout} {amount} {turbo} {busy} {autoRemaining} {freeRemaining}
-    onturbo={() => { if (!choicesLocked) turbo = !turbo; }} onauto={startAuto} onbonus={startBonus} onstop={stopAuto} />
+  <GameModes bind:this={modes} layout={activeLayout} {amount} {busy} {autoRemaining} {freeRemaining}
+    onauto={startAuto} onbonus={startBonus} onstop={stopAuto} />
 </main>
 
 <style>
   .content { flex:1; min-height:0; display:grid; grid-template-rows:minmax(180px,1fr) auto; gap:12px; }
+  .controls-dock { display:grid; gap:8px; width:100%; max-width:1280px; min-width:0; justify-self:center; }
   .playfield { position:relative; min-width:0; min-height:0; overflow:hidden; container-type:size; border:1px solid var(--line); border-radius:20px; background:radial-gradient(90% 70% at 50% 100%,#3b1f6b66,transparent 70%),var(--surface); }
-  .playfield[data-phase='win'] { background:radial-gradient(90% 70% at 50% 100%,#385b2d44,transparent 70%),var(--surface); }
-  .stage-top { position:absolute; top:16px; left:20px; right:20px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
-  .phase { display:inline-flex; padding:7px 12px; border-radius:999px; color:var(--accent); background:var(--accent-soft); font-size:13px; font-weight:700; }
-  .lines { color:var(--muted); font-size:13px; white-space:nowrap; }
-  [data-phase='win'] .phase { color:var(--win); background:#34d39920; }
-  [data-phase='freeSpins'] .phase { color:var(--gold); background:#fbbf2420; }
+  .stage-top { position:absolute; top:16px; left:20px; right:20px; }
   .board-area { position:absolute; inset:64px 32px 72px; display:grid; align-items:center; }
   .result { position:absolute; left:16px; right:16px; bottom:18px; display:grid; justify-items:center; gap:5px; text-align:center; }
   .result strong { color:var(--win); font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; }
-  .result span { color:var(--muted); font-size:15px; line-height:1.4; }
   [data-phase='freeSpins'] .result strong { color:var(--gold); }
+  .game[data-layout='portrait'] { padding:12px; gap:10px; }
   .game[data-layout='portrait'] .content { gap:10px; }
-  .game[data-layout='portrait'] .tag { display:none; }
   .game[data-layout='portrait'] .board-area { inset:58px 12px 82px; }
-  .game[data-layout='portrait'] .stage-top { left:12px; right:12px; top:12px; }
-  .game[data-layout='portrait'] .lines { display:none; }
-  .game[data-layout='portrait'] .result span { font-size:14px; }
+  .game[data-layout='portrait'] .stage-top { left:12px; right:12px; top:12px; gap:8px; }
   .game[data-layout='portrait'] .result strong { font-size:22px; }
   .game[data-layout='landscape'] .content { grid-template-columns:minmax(0,1fr) minmax(340px,44%); grid-template-rows:minmax(0,1fr); gap:10px; }
-  .game[data-layout='landscape'] .board-area { inset:50px 12px 56px; }
-  .game[data-layout='landscape'] .lines { display:none; }
+  .game[data-layout='landscape'] .controls-dock { align-self:end; }
+  .game[data-layout='landscape'] :global(.slot-controls) { padding:8px; gap:6px; }
+  .game[data-layout='landscape'] :global(.slot-controls > .bet) { padding:4px; }
+  .game[data-layout='landscape'] .board-area { inset:64px 12px 56px; }
   .game[data-layout='landscape'] .result { bottom:12px; }
-  .game[data-layout='landscape'] .result span { font-size:13px; }
   .game[data-layout='landscape'] .stage-top { left:12px; right:12px; top:10px; }
   .game[data-layout='landscape'] .result strong { font-size:20px; }
 </style>

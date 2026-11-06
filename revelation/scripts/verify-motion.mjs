@@ -11,6 +11,10 @@ export async function verifyMotion(browser, url) {
   page.on('pageerror', error => errors.push(error.message));
   try {
     await page.goto(url + '/scene');
+    await page.getByRole('button', { name: 'Augmenter la mise', exact: true }).click();
+    await page.locator('.amount-value').filter({hasText:'20'}).waitFor();
+    // Les montants rapides restent visibles en paysage, le portrait garde deux lignes.
+    await page.setViewportSize({ width: 844, height: 390 });
     await page.locator('.hud .chips button').first().waitFor();
     await page.locator('.hud .chips button').first().click();
     const motion = await page.locator('.hud .chips').evaluate(async chips => {
@@ -37,8 +41,9 @@ export async function verifyMotion(browser, url) {
     await page.keyboard.press('Escape');
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(url + '/scene');
-    await page.locator('.hud .chips button').nth(2).click();
+    await page.getByRole('button', { name: 'Augmenter la mise', exact: true }).click();
     const running = await page.locator('.hud').evaluate(hud => hud.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length);
     assert.equal(running, 0, 'Le mode mouvement réduit doit supprimer les animations du panneau.');
     assert.deepEqual(errors, []);

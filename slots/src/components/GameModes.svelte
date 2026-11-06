@@ -13,9 +13,9 @@
   const labels = { manual:'Manuel', auto:'Auto', bonus:'Gratuits' };
   const titles = { manual:'Un tour à la fois', auto:'Les tours s’enchaînent', bonus:'5 tours gratuits' };
   const icons = { manual:'play', auto:'repeat', bonus:'star' } as const;
-  let { layout, amount, turbo, busy, autoRemaining, freeRemaining, onturbo, onauto, onbonus, onstop }: {
-    layout: LayoutType; amount: number; turbo: boolean; busy: boolean; autoRemaining: number; freeRemaining: number;
-    onturbo: () => void; onauto: (rounds: number) => void; onbonus: () => void; onstop: () => void;
+  let { layout, amount, busy, autoRemaining, freeRemaining, onauto, onbonus, onstop }: {
+    layout: LayoutType; amount: number; busy: boolean; autoRemaining: number; freeRemaining: number;
+    onauto: (rounds: number) => void; onbonus: () => void; onstop: () => void;
   } = $props();
   const id = `game-modes-${++count}`;
   let sheet: ReturnType<typeof Sheet>;
@@ -23,11 +23,10 @@
   let rounds = $state(3);
   const roundOptions = [3, 5, 10];
   const current = $derived<Mode>(freeRemaining > 0 ? 'bonus' : autoRemaining > 0 ? 'auto' : 'manual');
-  const speedLocked = $derived(busy || autoRemaining > 0);
   const blocked = $derived(view === 'manual' ? freeRemaining > 0 : view === 'auto' ? autoRemaining === 0 && (busy || freeRemaining > 0) : freeRemaining === 0 && (busy || autoRemaining > 0));
   const action = $derived(view === 'manual' ? autoRemaining > 0 ? 'Revenir au mode manuel' : 'Revenir au jeu' : view === 'auto' ? autoRemaining > 0 ? 'Arrêter la série' : `Lancer ${rounds} tours` : freeRemaining > 0 ? 'Continuer les tours gratuits' : 'Commencer les 5 tours');
 
-  export function open() { view = current; sheet.open(); }
+  export function open(selected: Mode = current) { view = selected; sheet.open(); }
   function apply() {
     if (blocked) return;
     sheet.close();
@@ -83,7 +82,6 @@
         {/key}
       </div>
 
-      <label class="turbo-control" class:locked={speedLocked}><span class="turbo-icon" aria-hidden="true"><Icon name="bolt" size={20} /></span><span class="turbo-text"><strong>Turbo</strong><small>{speedLocked ? 'Verrouillé pendant le jeu' : 'Rouleaux plus rapides'}</small></span><input type="checkbox" aria-label="Activer le turbo" checked={turbo} disabled={speedLocked} onchange={onturbo} /></label>
       <div class="mode-confirm"><button class="mode-action" class:stop={view === 'auto' && autoRemaining > 0} disabled={blocked} onclick={apply}><Icon name={view === 'auto' && autoRemaining > 0 ? 'stop' : view === 'manual' ? 'check' : icons[view]} size={19} /><span>{action}</span></button></div>
     </div>
   </div>
@@ -96,7 +94,7 @@
   .current-mode { display:flex; align-items:center; gap:6px; margin:4px 0 16px; color:var(--muted); font-size:12px; }
   .current-mode strong { color:var(--text); font-weight:600; }
   .status-dot { width:6px; height:6px; margin-right:2px; border-radius:50%; background:var(--win); }
-  .mode-grid { display:grid; grid-template-areas:'tabs' 'panel' 'speed' 'confirm'; gap:14px; }
+  .mode-grid { display:grid; grid-template-areas:'tabs' 'panel' 'confirm'; gap:14px; }
   .mode-tabs { position:relative; isolation:isolate; overflow:hidden; grid-area:tabs; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:4px; border:1px solid var(--line); border-radius:16px; background:#0b0813; }
   .tab-selection { position:absolute; z-index:-1; top:4px; bottom:4px; left:4px; width:calc((100% - 16px) / 3); border-radius:12px; background:var(--mode-tint); box-shadow:inset 0 0 0 1px var(--mode-color); transform:translateX(calc(var(--mode-index) * (100% + 4px))); transition:transform .3s cubic-bezier(.22,1,.36,1),background-color .25s; }
   .mode-tabs button { display:flex; align-items:center; justify-content:center; gap:7px; min-width:0; min-height:52px; padding:8px 4px; border:0; border-radius:12px; color:var(--muted); background:transparent; font:inherit; font-size:13px; font-weight:600; transition:color .2s,background-color .2s; }
@@ -126,12 +124,6 @@
   .bonus-preview > span,.running-series > span { flex:1; min-width:0; color:var(--text); font-size:14px; }
   .bonus-preview small { display:block; margin-top:4px; color:var(--muted); font-size:12px; }
   .mode-help { margin:0; color:var(--muted); font-size:12px; line-height:1.4; }
-  .turbo-control { grid-area:speed; display:flex; align-items:center; gap:10px; min-width:0; min-height:56px; padding:0 2px; cursor:pointer; }
-  .turbo-icon { display:grid; place-items:center; flex:0 0 32px; height:36px; color:var(--accent); }
-  .turbo-text { flex:1; min-width:0; display:grid; gap:4px; }
-  .turbo-text strong { color:var(--text); font-size:14px; font-weight:600; }
-  .turbo-text small { color:var(--muted); font-size:12px; line-height:1.3; }
-  .turbo-control.locked { cursor:default; }
   .mode-confirm { grid-area:confirm; display:flex; align-items:center; min-width:0; }
   .mode-action { display:flex; align-items:center; justify-content:center; gap:9px; width:100%; min-height:52px; padding:12px; border:0; border-radius:14px; color:#052e1a; background:linear-gradient(180deg,#ffffff2e,transparent 70%),#34d399; box-shadow:inset 0 1px 0 #ffffff40; font:inherit; font-size:15px; font-weight:700; transition:filter .2s,transform .15s; }
   [data-mode='bonus'] .mode-action { color:#3a2700; background:linear-gradient(180deg,#ffffff2e,transparent 70%),#fbbf24; }
@@ -141,7 +133,7 @@
   .mode-action:disabled { cursor:default; }
   @keyframes panel-enter { from { opacity:.3; transform:translateY(4px); } to { opacity:1; transform:none; } }
   [data-layout='landscape'] .current-mode { display:none; }
-  [data-layout='landscape'] .mode-grid { grid-template-areas:'tabs panel' 'speed confirm'; grid-template-columns:1fr 2fr; gap:12px 18px; margin-top:12px; }
+  [data-layout='landscape'] .mode-grid { grid-template-areas:'tabs panel' 'confirm confirm'; grid-template-columns:1fr 2fr; gap:12px 18px; margin-top:12px; }
   [data-layout='landscape'] .mode-tabs { grid-template-columns:1fr; grid-template-rows:repeat(3,minmax(0,1fr)); }
   [data-layout='landscape'] .mode-tabs button { justify-content:flex-start; padding-left:12px; min-height:44px; }
   [data-layout='landscape'] .tab-selection { top:4px; bottom:auto; left:4px; right:4px; width:auto; height:calc((100% - 16px) / 3); transform:translateY(calc(var(--mode-index) * (100% + 4px))); }
@@ -151,7 +143,6 @@
   [data-layout='landscape'] .panel-heading { gap:9px; }
   [data-layout='landscape'] .panel-heading h3 { font-size:16px; }
   [data-layout='landscape'] .mode-receipt { padding-top:8px; }
-  [data-layout='landscape'] .turbo-icon { display:none; }
   @media (max-width:359px) { .mode-tabs button { flex-direction:column; gap:4px; } .mode-panel { padding:12px; } .panel-heading h3 { font-size:16px; } }
-  @media (prefers-reduced-motion:reduce) { .tab-selection,.mode-tabs button,.round-selection,.mode-action { transition:none; } .panel-content { animation:none; } .mode-action:active:enabled { transform:none; } .mode-workspace .turbo-control input[type='checkbox'],.mode-workspace .turbo-control input[type='checkbox']::after { transition:none; } }
+  @media (prefers-reduced-motion:reduce) { .tab-selection,.mode-tabs button,.round-selection,.mode-action { transition:none; } .panel-content { animation:none; } .mode-action:active:enabled { transform:none; } }
 </style>

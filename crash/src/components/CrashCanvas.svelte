@@ -45,18 +45,13 @@
 
       host.prepend(app.canvas);
       app.canvas.setAttribute('aria-hidden', 'true');
-      const grid = new Graphics();
       const area = new Graphics();
       const curve = new Graphics();
-      app.stage.addChild(grid, area, curve);
+      app.stage.addChild(area, curve);
       const draw = () => {
         const width = Math.max(host.clientWidth, 1);
         const height = Math.max(host.clientHeight, 1);
         app.renderer.resize(width, height);
-        grid.clear();
-        for (let x = 48; x < width; x += 48) grid.moveTo(x, 0).lineTo(x, height);
-        for (let y = height - 48; y > 0; y -= 48) grid.moveTo(0, y).lineTo(width, y);
-        grid.stroke({ color: 0xffffff, alpha: 0.035, width: 1 });
         area.clear();
         curve.clear();
         const color = colors[scenario];

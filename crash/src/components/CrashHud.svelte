@@ -1,5 +1,7 @@
 <script lang="ts">
   import config from '../game.config';
+  import HudStats from '../../../src/lib/HudStats.svelte';
+  import PanelMenu from '../../../src/lib/PanelMenu.svelte';
   import { formatDecimal, formatMoney, formatNumber } from '../game/format';
   import type { LayoutType } from '../game/layouts';
   import { scenarios, type Scenario } from '../game/scenarios';
@@ -7,10 +9,11 @@
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
 
-  let { scenario = 'betting', layout = 'desktop', onaction }: {
+  let { scenario = 'betting', layout = 'desktop', onaction, onmenu }: {
     scenario?: Scenario;
     layout?: LayoutType;
     onaction?: () => void;
+    onmenu: () => void;
   } = $props();
 
   const steps = config.betAmountOptions;
@@ -48,12 +51,13 @@
   // Le gain garde les centimes : 10 FCFA à ×2,35 donnent 23,50 FCFA.
   const payout = $derived(Math.round(amount * scenarios[scenario].multiplier * 100) / 100);
   let settledAmount = $state(0);
+  let lastWin = $state<number | null>(null);
   let settledBet = $state(0);
   let previousScenario: Scenario | undefined;
   $effect(() => {
     if (scenario !== previousScenario) {
-      if (scenario === 'cashedOut') settledAmount = payout;
-      if (scenario === 'ended') settledAmount = amount;
+      if (scenario === 'cashedOut') { settledAmount = payout; lastWin = payout; }
+      if (scenario === 'ended') { settledAmount = amount; lastWin = 0; }
       settledBet = amount;
       previousScenario = scenario;
     }
@@ -73,8 +77,8 @@
   const primaryIcons = { bet: 'play', cashout: 'wallet', cancel: 'close' } as const;
   const primaryAction = $derived(canCashout ? 'cashout' : scenario === 'queued' ? 'cancel' : 'bet');
   const action = $derived(canCashout ? 'Encaisser' : scenario === 'queued' ? 'Annuler' : 'Miser');
-  const actionDetail = $derived(canCashout ? `${formatDecimal(payout)} FCFA` : scenario === 'queued' ? `Mise de ${formatMoney(amount)}` : formatMoney(amount));
-  const actionLabel = $derived(canCashout ? `Encaisser ${actionDetail}` : scenario === 'queued' ? 'Annuler la mise' : `Miser ${formatMoney(amount)}`);
+  const actionDetail = $derived(canCashout ? `${formatDecimal(payout)} FCFA` : null);
+  const actionLabel = $derived(canCashout ? `Encaisser ${actionDetail}` : scenario === 'queued' ? 'Annuler la mise' : 'Miser');
   const autoEnabled = $derived(autoBet || autoCashout);
   const autoValue = $derived(autoCashout ? `×${formatDecimal(cashoutTarget)}` : autoBet ? 'Activé' : 'Désactivé');
 
@@ -83,18 +87,23 @@
   }
 </script>
 
-<section class="hud" data-layout={layout} aria-label="Commandes crash">
+<section class="hud" class:no-round={roundValue === null} data-layout={layout} aria-label="Commandes crash">
+  <PanelMenu onopen={onmenu} />
+  {#if layout === 'portrait'}<HudStats balance={config.balance} {lastWin} />{/if}
+  {#if roundValue !== null}
   <div class="card tile round" data-phase={scenario} class:targeted={targetPayout !== null}>
     <span class="tile-icon" aria-hidden="true"><Icon name={roundIcons[scenario]} size={22} /></span>
     <div class="tile-text">
       <span class="caption">{roundCaption}</span>
-      <p class="tile-value"><output aria-label="Montant de la manche" aria-live="polite">{roundValue === null ? '—' : formatDecimal(roundValue)}</output>{#if roundValue !== null}<small>FCFA</small>{/if}</p>
+      <p class="tile-value"><output aria-label="Montant de la manche" aria-live="polite">{formatDecimal(roundValue)}</output><small>FCFA</small></p>
       <span class="tile-detail">{roundDetail}</span>
     </div>
   </div>
+  {/if}
 
   <button class="card tile auto" class:enabled={autoEnabled} aria-label="Ouvrir les automatismes" aria-haspopup="dialog" onclick={() => autoSheet.open()}>
     <span class="tile-icon" aria-hidden="true"><Icon name="repeat" size={22} /></span>
+    {#if layout === 'portrait'}<span class="compact-label">Auto</span>{/if}
     <span class="tile-text">
       <span class="caption">{autoCashout ? 'Encaisse à' : 'Jeu auto'}</span>
       <span class="tile-value"><strong>{autoValue}</strong></span>
@@ -125,7 +134,7 @@
         <span class="primary-icon" aria-hidden="true"><Icon name={primaryIcons[primaryAction]} size={22} /></span>
         <span class="primary-text">
           <span class="primary-label">{action}</span>
-          <span class="primary-detail">{actionDetail}</span>
+          {#if actionDetail}<span class="primary-detail">{actionDetail}</span>{/if}
         </span>
       </span>
     {/key}

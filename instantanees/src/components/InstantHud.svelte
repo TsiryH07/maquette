@@ -1,13 +1,15 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
   import config from '../game.config';
+  import HudStats from '../../../src/lib/HudStats.svelte';
+  import PanelMenu from '../../../src/lib/PanelMenu.svelte';
   import { formatDecimal, formatMoney, formatNumber } from '../game/format';
   import type { LayoutType } from '../game/layouts';
   import { risks, type Risk, type Scenario } from '../game/scenarios';
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
   import '../game/hud.css';
-  let { scenario, layout, amount = $bindable(config.bet), risk, payout, onaction }: { scenario: Scenario; layout: LayoutType; amount?: number; risk: Risk; payout: number; onaction: () => void } = $props();
+  let { scenario, layout, amount = $bindable(config.bet), risk, payout, onaction, onmenu }: { scenario: Scenario; layout: LayoutType; amount?: number; risk: Risk; payout: number; onaction: () => void; onmenu: () => void } = $props();
   let auto = $state(false);
   let rounds = $state('10');
   const roundOptions = ['10', '25', '50'];
@@ -18,6 +20,8 @@
   const potential = $derived(Math.round(amount * risks[risk].factor * 100) / 100);
   const resultValue = $derived(scenario === 'won' ? payout : scenario === 'lost' ? 0 : null);
   const action = $derived(locked ? 'Lancer en cours' : scenario === 'ready' ? 'Jouer' : 'Rejouer');
+  let lastWin = $state<number | null>(null);
+  $effect(() => { if (scenario === 'won') lastWin = payout; else if (scenario === 'lost') lastWin = 0; });
 
   const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   let direction = $state(1);
@@ -33,11 +37,14 @@
 </script>
 
 <section class="hud" data-layout={layout} aria-label="Commandes des jeux instantanés">
+  <PanelMenu onopen={onmenu} />
+  {#if layout === 'portrait'}<HudStats balance={config.balance} {lastWin} />{/if}
   <div class="card tile round" data-result={scenario}>
     <span class="tile-icon" aria-hidden="true"><Icon name="coins" size={22} /></span>
     <div class="tile-text"><span class="caption">{resultValue === null ? 'Gain possible' : 'Dernier gain'}</span><p class="tile-value"><output aria-label="Gain affiché" aria-live="polite">{formatDecimal(resultValue ?? potential)}</output><small>FCFA</small></p><span class="tile-detail">{resultValue === null ? `${risks[risk].label} · ${risks[risk].hint}` : scenario === 'won' ? 'Résultat gagné' : 'Résultat sous l’objectif'}</span></div>
   </div>
   <button class="card tile auto" class:enabled={auto} aria-label="Ouvrir le jeu automatique" aria-haspopup="dialog" onclick={() => autoSheet.open()}>
+    {#if layout === 'portrait'}<span class="compact-label">Auto</span>{/if}
     <span class="tile-icon" aria-hidden="true"><Icon name="repeat" size={22} /></span><span class="tile-text"><span class="caption">Jeu auto</span><span class="tile-value"><strong>{auto ? `${rounds} parties` : 'Désactivé'}</strong></span><span class="tile-detail">{auto ? 'Aperçu activé' : 'Au choix'}</span></span><span class="chevron" aria-hidden="true"><Icon name="chevron" size={18} /></span>
   </button>
   <div class="card bet" class:locked={locked}>
@@ -55,12 +62,12 @@
     </div>
   </div>
   
-  <button class="primary" data-action={locked ? 'busy' : 'bet'} disabled={locked} aria-label={locked ? 'Lancer en cours' : `${action} ${formatMoney(amount)}`} onclick={onaction}>
+  <button class="primary" data-action={locked ? 'busy' : 'bet'} disabled={locked} aria-label={action} onclick={onaction}>
     <span class="shine" aria-hidden="true"></span>
     {#key scenario}
       <span class="primary-content" in:fly={{ y: 8, duration: reduceMotion ? 0 : 220 }}>
         <span class="primary-icon" aria-hidden="true"><Icon name={locked ? 'clock' : 'play'} size={22} /></span>
-        <span class="primary-text"><span class="primary-label">{action}</span><span class="primary-detail">{formatMoney(amount)}</span></span>
+        <span class="primary-text"><span class="primary-label">{action}</span></span>
       </span>
     {/key}
     {#if locked}<span class="waiting" aria-hidden="true"></span>{/if}

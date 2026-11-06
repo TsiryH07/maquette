@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import SceneBackdrop from '../../../src/lib/SceneBackdrop.svelte';
+  import StudioLogo from '../../../src/lib/StudioLogo.svelte';
+  import '../../../src/lib/scene.css';
   import config from '../game.config';
   import InstantHud from '../components/InstantHud.svelte';
   import DiceStage from '../components/DiceStage.svelte';
@@ -52,26 +55,26 @@
   });
 </script>
 
-<main class="game" data-layout={activeLayout} data-scenario={phase} bind:this={host}>
+<main class="game immersive" data-layout={activeLayout} data-scenario={phase} bind:this={host}>
+  <SceneBackdrop family="instantanees" />
   <header class="topbar">
-    <div class="brand">
+    <div class="brand" role="img" aria-label="Logo du jeu Dés">
       <span class="logo" aria-hidden="true"><Icon name="coins" size={18} /></span>
       <strong>DÉS</strong>
-      <span class="tag">Démo · montants fictifs</span>
     </div>
     <div class="account">
       <p class="balance">
         <span class="balance-icon" aria-hidden="true"><Icon name="wallet" size={18} /></span>
         <span class="balance-text"><span class="balance-caption">Solde</span><span class="balance-value"><strong>{formatDecimal(config.balance)}</strong><small>FCFA</small></span></span>
       </p>
-      <button class="settings" aria-label="Ouvrir le menu" title="Paramètres et règles" onclick={() => menu.open()}><Icon name="gear" size={22} /></button>
+      <StudioLogo />
     </div>
   </header>
 
 
   <div class="content">
     <section class="stage" aria-label="Zone du jeu de dés"><DiceStage scenario={phase} bind:risk playedRisk={resultRisk} face={resultFace} {payout} /></section>
-    <InstantHud scenario={phase} layout={activeLayout} bind:amount {risk} {payout} onaction={play} />
+    <InstantHud scenario={phase} layout={activeLayout} bind:amount {risk} {payout} onaction={play} onmenu={() => menu.open()} />
   </div>
   <Sheet bind:this={menu} title="Menu du jeu" closeLabel="Fermer le menu" layout={activeLayout}>
     <label class="row"><span><strong>Son</strong><small>Option visuelle de la maquette.</small></span><input type="checkbox" aria-label="Son" bind:checked={sound} /></label>

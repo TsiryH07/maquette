@@ -73,10 +73,14 @@ try {
   await page.getByRole('button', { name: 'Mobile portrait', exact: true }).click();
   const hud = page.frameLocator('iframe');
   await hud.getByRole('button', { name: 'Augmenter la mise' }).click();
-  await hud.getByRole('button', { name: 'Miser 20 FCFA', exact: true }).waitFor();
+  await hud.locator('.amount-value').filter({ hasText: /^20$/ }).waitFor();
+  await hud.getByRole('button', { name: 'Miser', exact: true }).waitFor();
   await hud.getByRole('button', { name: 'Diminuer la mise' }).click();
-  await hud.getByRole('group', { name: 'Montants rapides' }).getByRole('button', { name: '500 FCFA', exact: true }).click();
-  await hud.getByRole('button', { name: 'Miser 500 FCFA', exact: true }).waitFor();
+  await hud.getByRole('button', { name: 'Modifier le montant de la mise', exact: true }).click();
+  await hud.getByRole('group', { name: 'Montants de mise' }).getByRole('button', { name: '500 FCFA', exact: true }).click();
+  await hud.getByRole('button', { name: 'Terminé', exact: true }).click();
+  await hud.locator('.amount-value').filter({ hasText: /^500$/ }).waitFor();
+  await hud.getByRole('button', { name: 'Miser', exact: true }).waitFor();
   await hud.getByRole('button', { name: 'Ouvrir les automatismes', exact: true }).click();
   assert(await hud.getByRole('button', { name: 'Augmenter le multiplicateur automatique' }).isDisabled());
   await hud.getByRole('checkbox', { name: 'Encaissement automatique', exact: true }).check();
@@ -90,7 +94,7 @@ try {
   await hud.getByRole('button', { name: 'Ouvrir le menu', exact: true }).click();
   await hud.getByRole('dialog', { name: 'Menu du jeu' }).waitFor();
   await hud.getByRole('button', { name: 'Terminé', exact: true }).click();
-  await hud.getByRole('button', { name: 'Miser 500 FCFA', exact: true }).click();
+  await hud.getByRole('button', { name: 'Miser', exact: true }).click();
   await hud.locator('main[data-scenario="running"]').waitFor();
   assert(await hud.getByRole('button', { name: 'Augmenter la mise' }).isDisabled());
   await page.locator('iframe').screenshot({ path: 'reports/running.png' });

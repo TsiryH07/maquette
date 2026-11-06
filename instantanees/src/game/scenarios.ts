@@ -1,6 +1,6 @@
 export const scenarios = {
-  ready: { label: 'Prêt à jouer', phase: 'À vous de jouer', hint: 'Choisissez le risque, puis lancez le dé.' },
-  playing: { label: 'Lancer en cours', phase: 'Lancer en cours', hint: 'Le dé roule…' },
+  ready: { label: 'Prêt à jouer', phase: 'À vous de jouer', hint: 'Choisissez le risque, puis lancez.' },
+  playing: { label: 'Lancer en cours', phase: 'Lancer en cours', hint: 'Le dé roule.' },
   won: { label: 'Résultat gagnant', phase: 'Résultat gagnant', hint: 'Le dé a atteint votre objectif.' },
   lost: { label: 'Résultat sans gain', phase: 'Pas de gain', hint: 'Le résultat est sous votre objectif.' },
 } as const;
