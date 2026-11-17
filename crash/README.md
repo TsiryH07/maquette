@@ -30,13 +30,13 @@ Le lien « Ouvrir l'écran seul » enlève les commandes de l'atelier : la maque
 
 L'écran se lit de haut en bas :
 
-- **La barre du haut** montre le logo du jeu à gauche, le logo du studio à droite et le solde fictif sur les grands écrans. Le menu ≡ (son et règles) est en bas à gauche du panneau de commandes.
+- **La barre du haut** montre le logo du jeu à gauche, le logo du studio à droite et le solde fictif sur les grands écrans. Le menu ≡ (son et règles) est dans le dock de commandes : rond à gauche, ou au-dessus de la barre, en haut à gauche, en portrait.
 - **La zone du jeu** montre les multiplicateurs des dernières manches, l'étape de la partie (« Mises ouvertes », « En cours », « Encaissé », « Crash »), le grand multiplicateur et la courbe dessinée avec PixiJS. Les couleurs suivent l'étape : violet en vol, vert après un encaissement, rouge au crash.
-- **Le panneau** regroupe quatre blocs : le montant de la manche, la mise, « Auto » et le bouton principal.
+- **Le dock** (`../src/lib/CasinoControlDock.svelte`, commun aux quatre jeux) regroupe le solde, la mise, « Auto » et le bouton principal. En portrait, il prend la disposition de Poulet Banane : ☰ et AUTO (creusé autour de JOUER) au-dessus de la barre, JOUER rond centré sur son bord haut, SOLDE et MISE (encadrée par − et +) dans la barre.
 
-Le bouton principal affiche l'action sans répéter la mise : « Miser » ou « Annuler ». Pendant la manche, « Encaisser » conserve le montant du gain à encaisser. Le bouton est vert pour miser, ambre pour encaisser et rouge pour annuler une mise en attente. Le bloc de la manche affiche « Gain potentiel » pendant la manche, « Encaissé » après un encaissement et « Mise perdue » après un crash. Sur ordinateur, les blocs sont alignés sur une ligne ; en portrait, le bouton est rond dans le panneau compact à deux lignes.
+Le bouton principal affiche « JOUER » pour lancer, comme dans tous les jeux, ou « Annuler » pour une mise en attente. Pendant la manche, « Encaisser » conserve le montant du gain à encaisser. Le bouton est vert pour jouer, ambre pour encaisser et rouge pour annuler une mise en attente. Le bloc de la manche affiche « Gain potentiel » pendant la manche, « Encaissé » après un encaissement et « Mise perdue » après un crash. Pendant la manche, le dock ne garde que le menu et un grand bouton doré « Encaisser » avec le gain ; en portrait, ce bouton remplit la barre, qui garde sa hauteur.
 
-Le parcours visuel est le suivant : choisir une mise, cliquer sur « Miser », puis « Encaisser ». Le montant affiché correspond à la mise multipliée par le multiplicateur de la vue, au centime près. La mise est verrouillée pendant la manche et redevient modifiable après son règlement.
+Le parcours visuel est le suivant : choisir une mise, cliquer sur « JOUER », puis « Encaisser ». Le montant affiché correspond à la mise multipliée par le multiplicateur de la vue, au centime près. La mise est verrouillée pendant la manche et redevient modifiable après son règlement.
 
 La mise commence à 10 FCFA, avec les raccourcis 100, 200, 500 et 1 000. Un clic sur le montant ouvre tous les montants possibles (de 10 à 1 000). Par exemple, une mise de 100 FCFA à ×2,35 permet de représenter un encaissement de 235,00 FCFA. Un gain encaissé reste affiché même si l'on prépare une autre mise.
 
@@ -63,7 +63,7 @@ crash/
 ├── src/
 │   ├── components/
 │   │   ├── CrashCanvas.svelte   Grille et courbe PixiJS
-│   │   ├── CrashHud.svelte      Panneau de commandes et fenêtres Mise / Auto
+│   │   ├── CrashHud.svelte      Branchement du dock commun et fenêtres Mise / Auto
 │   │   └── Sheet.svelte         Fenêtre commune (mise, auto, menu)
 │   ├── game/
 │   │   ├── Game.svelte          Barre du haut, zone du jeu, menu et couleurs de l'écran

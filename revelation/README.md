@@ -1,6 +1,6 @@
 # Maquette Révélation
 
-Cet atelier présente une grille de 16 cases : on révèle des trésors, puis on choisit d'encaisser. Le portrait reprend l'univers de Poulet Banane du Web SDK : savane en plein écran, cartes violettes ornementées, bouton vert et panneau compact au pied du jeu. Le menu reste en bas à gauche et le logo du studio en haut à droite.
+Cet atelier présente une grille de 16 cases : on révèle des trésors, puis on choisit d'encaisser. Le portrait reprend l'univers de Poulet Banane du Web SDK : savane en plein écran, cartes violettes ornementées, et le dock commun au pied du jeu, dans la disposition de la barre portrait de Poulet Banane. Le logo du studio reste en haut à droite.
 
 Les quatre images de `src/assets/banane/` sont des copies des sprites du Web SDK (`savane_portrait`, dos et face de carte, `play_vert`). Le SDK reste une référence en lecture seule. L'adaptation est isolée dans `src/game/portrait.css` et `src/components/BananeBackdrop.svelte` ; les trois autres formats gardent leur présentation.
 
@@ -17,15 +17,15 @@ Ouvrir **http://localhost:3052**. Si nécessaire, installer d'abord avec `npm in
 
 ## Essayer la maquette
 
-1. Choisir une mise avec `−`, `+` ou un montant rapide.
-2. Choisir la difficulté : Calme (1 piège), Normal (3 pièges) ou Expert (5 pièges).
-3. Appuyer sur **Commencer**.
+1. Choisir une mise avec `−`, `+` ou en touchant le montant.
+2. Choisir la difficulté : Calme (1 piège), Normal (3 pièges) ou Expert (5 pièges), dans la liste déroulante du dock, dans tous les formats (au-dessus du SOLDE en portrait).
+3. Appuyer sur **Jouer**.
 4. Choisir une case. Un trésor augmente le gain ; un piège termine la manche.
 5. Après un trésor, appuyer sur **Encaisser** pour conserver le résultat affiché.
 
 La mise et la difficulté sont bloquées pendant la partie. Le gain encaissé reste identique si l'on prépare ensuite une autre mise.
 
-Le chiffre de mise et le contenu du bouton restent animés. Hors portrait, le panneau conserve la sélection violette glissante, le reflet du bouton et la pulsation de l'encaissement. En portrait, le bouton conserve l'habillage vert de Poulet Banane. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
+Le chiffre de mise et le contenu du bouton restent animés. Pendant la partie, le bouton doré Encaisser pulse ; à côté, la pierre verte de JOUER montre une flèche « suivant » (et non plus le mot JOUER) et révèle une case au hasard ; en portrait, Encaisser remplit la barre autour d'elle. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
 
 La grille est fixe pour présenter le parcours. La case 4 contient un piège dans les trois niveaux ; les cases 1 et 2 sont des trésors. Les multiplicateurs sont des valeurs de présentation, sans calcul de probabilités de production. Il n'y a ni hasard, ni paiement, ni compte réel. Le solde reste fictif. Aucun appel au serveur de jeux.
 
@@ -38,8 +38,7 @@ Storybook : `npm run storybook`, puis **http://localhost:6052**. Les vues sont d
 ## Fichiers utiles
 
 - `src/game/Game.svelte` : grille, déroulement de la démonstration et disposition des écrans.
-- `src/components/RevealHud.svelte` : gain, difficulté, mise et action principale.
-- `../src/lib/DifficultySelector.svelte` : même sélecteur à trois niveaux que les Instantanés, avec les pièges propres à chaque difficulté.
+- `src/components/RevealHud.svelte` : branchement du dock commun (difficulté avec le nombre de pièges, mise, JOUER, Encaisser) et fenêtre de mise.
 - `src/game.config.ts` : montants, pièges et multiplicateurs fictifs.
 - `src/game/scenarios.ts` : vues à sélectionner dans l'atelier.
 - `src/components/Sheet.svelte` : fenêtres de choix et de paramètres.

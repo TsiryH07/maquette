@@ -157,6 +157,6 @@
   .game[data-layout='portrait'] .content { gap: 10px; }
   .game[data-layout='portrait'] .balance { gap: 8px; padding-right: 14px; }
   .game[data-layout='landscape'] { padding: 10px; gap: 8px; }
-  .game[data-layout='landscape'] .content { grid-template-columns: minmax(0, 1fr) minmax(340px, 44%); grid-template-rows: minmax(0, 1fr); gap: 10px; }
+  .game[data-layout='landscape'] .content { grid-template-rows:minmax(0,1fr) auto; gap:8px; }
   .game[data-layout='landscape'] .status { gap: 8px; padding-top: 48px; }
 </style>

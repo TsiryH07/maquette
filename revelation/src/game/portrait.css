@@ -67,38 +67,7 @@ main.game.immersive.revelation[data-layout='portrait'] .board-footer {
 main.game.immersive.revelation[data-layout='portrait'] .board-footer > span { display:flex; justify-content:center; gap:5px; }
 main.game.immersive.revelation[data-layout='portrait'] .board-footer svg { color:#ffdc78; }
 main.game.immersive.revelation[data-layout='portrait'] .board-footer .multiplier { color:#ffdc78; font-size:18px; }
-main.game.immersive.revelation[data-layout='portrait'] .hud {
-  border:1px solid #9f75bb88;
-  border-radius:12px;
-  box-shadow:0 8px 28px #180a2955;
-  backdrop-filter:none;
-}
-main.game.immersive.revelation[data-layout='portrait'] .hud .portrait-stats > div > span { color:#dbc1e5; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .portrait-stats output { color:#ffe293; font-weight:400; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .stepper { grid-template-columns:minmax(0,1fr) 44px 44px; gap:2px; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .amount { grid-column:1; grid-row:1; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .step:first-child { grid-column:2; grid-row:1; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .step:last-child { grid-column:3; grid-row:1; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .step {
-  border:1px solid #9c70b355; border-radius:7px; color:#fff3d5; background:#372047;
-}
-main.game.immersive.revelation[data-layout='portrait'] .hud .amount::before { color:#dbc1e5; text-transform:uppercase; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .amount strong { color:#fff3d5; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .primary {
-  color:#fff; background:transparent url('../assets/banane/play.webp') center / contain no-repeat;
-  box-shadow:none; animation:none;
-}
-main.game.immersive.revelation[data-layout='portrait'] .hud .primary .shine { display:none; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .primary .primary-icon svg { width:25px; height:25px; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .auto {
-  border:1px solid #9c70b344; border-radius:7px; color:#fff3d5; background:#372047;
-}
-main.game.immersive.revelation[data-layout='portrait'] .hud .auto .compact-label { font-weight:400; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .auto .tile-icon { color:#ffdc78; }
-main.game.immersive.revelation[data-layout='portrait'] .hud .panel-menu { color:#dbc1e5; }
-@media (max-width:359px) {
-  main.game.immersive.revelation[data-layout='portrait'] .hud .stepper { gap:0; }
-}
+
 @media (max-height:650px) {
   main.game.immersive.revelation[data-layout='portrait'] .playfield { grid-template-rows:32px minmax(0,1fr) 24px; gap:4px; }
   main.game.immersive.revelation[data-layout='portrait'] .grid { width:min(100%,calc((100cqh - 72px) * .75)); gap:4px; }
