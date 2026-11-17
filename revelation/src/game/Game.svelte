@@ -68,6 +68,11 @@
       currentScenario = 'cashedOut';
     }
   }
+  // JOUER pendant la manche : révèle une case encore cachée, au hasard (elle peut être un piège).
+  function revealRandom() {
+    const hidden = Array.from({ length: 16 }, (_, index) => index).filter(index => !revealed.includes(index));
+    if (hidden.length) reveal(hidden[Math.floor(Math.random() * hidden.length)]);
+  }
   onMount(() => {
     let resizeFrame = 0;
     const observer = new ResizeObserver(([entry]) => {
@@ -111,7 +116,7 @@
       </div>
       <div class="board-footer"><span><Icon name="gem" size={16} />{safeCount} / {totalSafe} trésors</span><span><Icon name="shield" size={16} />{traps.length} piège{traps.length > 1 ? 's' : ''}</span><span class="multiplier" aria-label="Multiplicateur">×{formatDecimal(multiplier)}</span></div>
     </section>
-    <RevealHud {amount} {difficulty} phase={currentScenario} {payout} {multiplier} revealed={safeCount} {totalSafe} layout={activeLayout} onamount={(value) => amount = value} ondifficulty={(value) => difficulty = value} onprimary={primaryAction} onmenu={() => menu.open()} />
+    <RevealHud {amount} {difficulty} phase={currentScenario} {payout} revealed={safeCount} layout={activeLayout} onamount={(value) => amount = value} ondifficulty={(value) => difficulty = value} onprimary={primaryAction} oncontinue={revealRandom} onmenu={() => menu.open()} />
   </div>
   <Sheet bind:this={menu} title="Menu du jeu" closeLabel="Fermer le menu" layout={activeLayout}>
     <h3 class="section-title">Réglages</h3>
@@ -206,7 +211,7 @@
   .game[data-layout='portrait'] .grid { width: min(73cqmin,330px); gap: 8px; }
   .game[data-layout='portrait'] .board-footer { gap: 10px; font-size: 13px; }
   .game[data-layout='landscape'] { padding: 10px; gap: 8px; }
-  .game[data-layout='landscape'] .content { grid-template-columns: minmax(0,1fr) minmax(340px,44%); grid-template-rows: minmax(0,1fr); gap: 10px; }
+  .game[data-layout='landscape'] .content { grid-template-rows:minmax(0,1fr) auto; gap:8px; }
   .game[data-layout='landscape'] .playfield { padding: 12px; gap: 8px; }
   .game[data-layout='landscape'] .grid { width: min(70cqmin,250px); gap: 6px; }
   .game[data-layout='landscape'] .cell { border-radius: 10px; }

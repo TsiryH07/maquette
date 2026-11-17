@@ -105,8 +105,8 @@
       <div class="result" aria-live="polite">{#if phase === 'win'}<strong>+{formatMoney(lastWin)}</strong>{:else if phase === 'freeSpins'}<strong>{freeRemaining} tours gratuits</strong>{/if}</div>
     </section>
     <div class="controls-dock">
-      <SlotActions {turbo} locked={choicesLocked} bonusLocked={choicesLocked || freeRemaining > 0} onturbo={() => { if (!choicesLocked) turbo = !turbo; }} onbonus={() => modes.open('bonus')} />
-      <SlotsHud layout={activeLayout} {amount} locked={choicesLocked} win={lastWin} {turbo} {autoRemaining} {freeRemaining}
+      <SlotActions bonusLocked={choicesLocked || freeRemaining > 0} onbonus={() => modes.open('bonus')} />
+      <SlotsHud layout={activeLayout} {amount} locked={choicesLocked} bind:turbo {autoRemaining} {freeRemaining}
         onsetamount={(value) => { if (!choicesLocked && !freeRemaining) amount = value; }}
         onmodes={() => modes.open('auto')} onspin={spin} onstop={stopAuto} onmenu={() => menu.open()}/>
     </div>
@@ -137,11 +137,19 @@
   .game[data-layout='portrait'] .board-area { inset:58px 12px 82px; }
   .game[data-layout='portrait'] .stage-top { left:12px; right:12px; top:12px; gap:8px; }
   .game[data-layout='portrait'] .result strong { font-size:22px; }
-  .game[data-layout='landscape'] .content { grid-template-columns:minmax(0,1fr) minmax(340px,44%); grid-template-rows:minmax(0,1fr); gap:10px; }
+  .game[data-layout='landscape'] .content { grid-template-rows:minmax(0,1fr) auto; gap:8px; }
   .game[data-layout='landscape'] .controls-dock { align-self:end; }
+  /* Mobile paysage : Turbo et Achat de bonus deviennent deux boutons-icônes à gauche du dock,
+     pour laisser la hauteur de l'écran aux rouleaux. Les libellés restent lus par les lecteurs d'écran. */
+  .game[data-layout='landscape'] .controls-dock { grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:8px; }
+  .game[data-layout='landscape'] .controls-dock :global(.slot-actions) { width:auto; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:48px; }
+  .game[data-layout='landscape'] .controls-dock :global(:is(.turbo, .bonus)) { width:48px; padding:0; }
+  .game[data-layout='landscape'] .controls-dock :global(:is(.turbo > span, .bonus > span:last-child)) { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
   .game[data-layout='landscape'] :global(.slot-controls) { padding:8px; gap:6px; }
   .game[data-layout='landscape'] :global(.slot-controls > .bet) { padding:4px; }
-  .game[data-layout='landscape'] .board-area { inset:64px 12px 56px; }
+  .game[data-layout='landscape'] .board-area { inset:36px 12px 36px; }
+  /* Écran court : la largeur des rouleaux suit la hauteur disponible pour garder des cases presque carrées. */
+  .game[data-layout='landscape'] .board-area :global(.reels) { width:min(100%, calc((100cqh - 72px) * 1.8)); height:100%; min-height:0; }
   .game[data-layout='landscape'] .result { bottom:12px; }
   .game[data-layout='landscape'] .stage-top { left:12px; right:12px; top:10px; }
   .game[data-layout='landscape'] .result strong { font-size:20px; }

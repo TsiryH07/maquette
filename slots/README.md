@@ -15,20 +15,20 @@ Ouvrir **http://localhost:3053**. Choisir ordinateur, tablette, mobile portrait 
 
 ## Ce que l'on peut essayer
 
-- Changer la mise avec `−`, `+` ou les montants rapides.
+- Changer la mise avec `−`, `+` ou en touchant le montant.
 - Lancer les cinq rouleaux. La mise se verrouille pendant le mouvement.
 - Voir une ligne gagnante et son montant ; ce montant reste affiché si l'on prépare une autre mise.
 - Le bouton compact **Auto** ouvre directement les réglages automatiques. Les onglets **Manuel**, **Auto** et **Gratuits** restent accessibles dans cette même fenêtre. Le texte **Mode actuel** indique ce qui est réellement actif. Consulter un onglet ne lance rien.
 - Dans **Manuel**, retrouver le principe « un appui = un tour », puis revenir au jeu. Pendant l'auto, **Revenir au mode manuel** arrête les prochains tours ; le tour en cours se termine.
 - Dans **Auto**, choisir 3, 5 ou 10 tours, vérifier le total des mises et appuyer sur **Lancer**. Le bouton principal **Arrêter l’auto** permet d'interrompre la série. Le menu s'ouvre toujours pendant la série et permet aussi de l'arrêter.
-- Dans **Gratuits**, appuyer sur **Commencer les 5 tours**. Chaque tour se lance avec **Tour gratuit**, sans nouvelle mise ; le compteur diminue et la mise reste verrouillée. Le bouton **Continuer les tours gratuits** referme simplement le menu si le bonus est déjà actif.
-- **Turbo** est visible directement au-dessus du panneau de commandes, à côté d'**Achat de bonus**, dans les quatre formats. Il s'applique aux trois modes et se verrouille pendant un lancer ou une série automatique. Le réglage n'est plus dupliqué dans la fenêtre Auto.
-- **Achat de bonus**, à côté de Turbo, ouvre directement le bonus de démonstration existant. La confirmation lance les cinq tours gratuits ; cette modification visuelle n'ajoute pas de tarif d'achat. Le bouton est verrouillé pendant une série, un lancer ou des tours gratuits.
+- Dans **Gratuits**, appuyer sur **Commencer les 5 tours**. Chaque tour se lance avec **Jouer** (le bouton indique les tours gratuits restants), sans nouvelle mise ; le compteur diminue et la mise reste verrouillée. Le bouton **Continuer les tours gratuits** referme simplement le menu si le bonus est déjà actif.
+- **Turbo** est le bouton TURBO du dock : à côté d'AUTO dans tous les formats (en portrait, AUTO et TURBO côte à côte au-dessus de la MISE, AUTO creusé autour de JOUER). Il s'applique aux trois modes et se verrouille pendant un lancer ou une série automatique. Le réglage n'est plus dupliqué dans la fenêtre Auto.
+- **Achat de bonus**, au-dessus du dock (à gauche du dock en paysage), ouvre directement le bonus de démonstration existant. La confirmation lance les cinq tours gratuits ; cette modification visuelle n'ajoute pas de tarif d'achat. Le bouton est verrouillé pendant une série, un lancer ou des tours gratuits.
 - Ouvrir les paramètres pour les règles et la table de démonstration.
 
 La séquence est **fixe et illustrative** : un gain à ×2,50, un tour sans gain, puis un gain à ×1,20. Le tableau des symboles sert de maquette ; il ne définit pas les probabilités ou les règles d'un vrai jeu. Aucun hasard, aucun compte et aucun paiement. Le solde de présentation reste fixe. L'auto est borné et n'accepte pas une mise supérieure au solde fictif.
 
-Le panneau reprend les dimensions et les animations du Crash : changement de mise animé, reflet au survol et indicateur d'attente pendant le mouvement des rouleaux. La nouvelle fenêtre de modes possède une sélection glissante, une transition douce entre ses panneaux et une couleur par mode : menthe, violet et or. Les onglets se parcourent aussi avec les flèches du clavier, Début et Fin. Les réglages « mouvement réduit » sont respectés.
+Les commandes sont celles du dock commun aux quatre jeux : changement de mise animé et bouton JOUER qui pulse pendant le mouvement des rouleaux. La nouvelle fenêtre de modes possède une sélection glissante, une transition douce entre ses panneaux et une couleur par mode : menthe, violet et or. Les onglets se parcourent aussi avec les flèches du clavier, Début et Fin. Les réglages « mouvement réduit » sont respectés.
 
 Les cinq scénarios de l'atelier sont : prêt à jouer, rouleaux en mouvement, tour gagnant, tour sans gain et tours gratuits.
 

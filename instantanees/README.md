@@ -15,14 +15,14 @@ Ouvrir **http://localhost:3051**. Pour fermer le serveur : `Ctrl + C`.
 
 ## Ce que l'on peut faire
 
-1. Choisir un risque : **Prudent** (2 ou plus), **Équilibré** (4 ou plus), **Audacieux** (un 6).
-2. Régler la mise avec `−`, `+`, les montants rapides ou la fenêtre de choix.
-3. Appuyer sur **Jouer**. Le lancer dure brièvement, puis le résultat s'affiche.
-4. Utiliser **Rejouer** pour regarder le résultat suivant.
+1. Choisir un risque : **Prudent** (2 ou plus), **Équilibré** (4 ou plus), **Audacieux** (un 6). Il se choisit dans la liste Difficulté du dock, dans tous les formats (au-dessus du SOLDE en portrait).
+2. Régler la mise avec `−`, `+` ou en touchant le montant pour ouvrir la fenêtre de choix.
+3. Appuyer sur **Jouer**. Le lancer dure brièvement, puis le résultat s'affiche. Le bouton **Turbo** du dock raccourcit le lancer.
+4. Appuyer de nouveau sur **Jouer** pour regarder le résultat suivant.
 
 Les commandes sont bloquées pendant le lancer. Après le résultat, les nouvelles mises n'altèrent pas le gain déjà affiché. Les centimes sont conservés.
 
-Les cartes et les animations du panneau reprennent celles du Crash : le chiffre de la mise arrive en glissant, la pastille violette suit le montant rapide choisi et le bouton principal possède le même reflet et les mêmes transitions. L'attente du lancer utilise la même barre animée. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
+Les commandes sont celles du dock commun aux quatre jeux : le chiffre de la mise rebondit à chaque changement et le bouton JOUER pulse pendant le lancer. Le bouton TURBO accélère le lancer. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
 
 Les démonstrations alternent volontairement un résultat gagnant puis un résultat sans gain. Il n'y a aucun hasard réel, compte, serveur de jeu ou paiement. Le solde reste fictif. Les objectifs et facteurs servent à présenter les états visuels ; ils ne constituent pas une configuration mathématique de production. Le jeu automatique est une option illustrative et ne lance aucune boucle.
 
@@ -49,9 +49,8 @@ Si Chromium manque : `npx playwright install chromium`. Le test navigateur déma
 ## Fichiers principaux
 
 - `src/game/Game.svelte` : assemblage, solde, paramètres et parcours de démonstration.
-- `src/components/DiceStage.svelte` : dé, objectif et choix du risque, dessinés en HTML/CSS.
-- `../src/lib/DifficultySelector.svelte` : sélecteur de difficulté commun avec Révélation, à trois niveaux, verrouillé pendant le lancer.
-- `src/components/InstantHud.svelte` : gain, mise, jouer et options automatiques.
+- `src/components/DiceStage.svelte` : dé et objectif, dessinés en HTML/CSS.
+- `src/components/InstantHud.svelte` : branchement du dock commun (mise, risque, Auto, Turbo, JOUER) et fenêtres Mise / Auto.
 - `src/components/Sheet.svelte` : fenêtres, dont le panneau du bas sur mobile.
 - `src/game/scenarios.ts` : vues et exemples des risques.
 - `src/game.config.ts` : solde et mises fictifs.

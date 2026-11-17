@@ -23,6 +23,8 @@
   let resultFace = $state(5);
   let resultBet = $state(config.bet);
   let resultRisk = $state<Risk>('balanced');
+  // Turbo : lancer plus court et dé qui roule plus vite.
+  let turbo = $state(false);
   let previous: Scenario | undefined;
   let turn = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -41,7 +43,7 @@
       const wins = turn++ % 2 === 0;
       resultFace = wins ? Math.max(5,risks[resultRisk].min) : 1;
       phase = wins ? 'won' : 'lost';
-    },650);
+    }, turbo ? 250 : 650);
   }
   onDestroy(() => clearTimeout(timer));
   onMount(() => {
@@ -73,8 +75,8 @@
 
 
   <div class="content">
-    <section class="stage" aria-label="Zone du jeu de dés"><DiceStage scenario={phase} bind:risk playedRisk={resultRisk} face={resultFace} {payout} /></section>
-    <InstantHud scenario={phase} layout={activeLayout} bind:amount {risk} {payout} onaction={play} onmenu={() => menu.open()} />
+    <section class="stage" aria-label="Zone du jeu de dés"><DiceStage scenario={phase} playedRisk={resultRisk} face={resultFace} {payout} {turbo} /></section>
+    <InstantHud scenario={phase} layout={activeLayout} bind:amount bind:risk bind:turbo onaction={play} onmenu={() => menu.open()} />
   </div>
   <Sheet bind:this={menu} title="Menu du jeu" closeLabel="Fermer le menu" layout={activeLayout}>
     <label class="row"><span><strong>Son</strong><small>Option visuelle de la maquette.</small></span><input type="checkbox" aria-label="Son" bind:checked={sound} /></label>
