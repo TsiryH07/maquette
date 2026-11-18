@@ -24,7 +24,7 @@ Les commandes sont bloquées pendant le lancer. Après le résultat, les nouvell
 
 Les commandes sont celles du dock commun aux quatre jeux : le chiffre de la mise rebondit à chaque changement et le bouton JOUER pulse pendant le lancer. Le bouton TURBO accélère le lancer. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
 
-Les démonstrations alternent volontairement un résultat gagnant puis un résultat sans gain. Il n'y a aucun hasard réel, compte, serveur de jeu ou paiement. Le solde reste fictif. Les objectifs et facteurs servent à présenter les états visuels ; ils ne constituent pas une configuration mathématique de production. Le jeu automatique est une option illustrative et ne lance aucune boucle.
+Les démonstrations alternent volontairement un résultat gagnant puis un résultat sans gain. Il n'y a aucun hasard réel, compte, serveur de jeu ou paiement. Le solde reste fictif. Les objectifs et facteurs servent à présenter les états visuels ; ils ne constituent pas une configuration mathématique de production. Le bouton AUTO ouvre la fenêtre **TOURS AUTO** du web-sdk (comme dans des-destin, sans menu AVANCÉ) : **NOMBRE DE TOURS** (10 à 1000, ou ∞ ; pas de 1000 en paysage), puis **LANCER L'AUTO-SPIN**. Les tours s'enchaînent avec la même mise et le même risque, verrouillés pendant la série ; JOUER devient **Arrêter** et affiche les tours restants, et un appui sur AUTO arrête aussi la série. Le tour en cours se termine.
 
 ## Les écrans
 

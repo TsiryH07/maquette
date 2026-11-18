@@ -90,11 +90,11 @@ try {
         const hit = document.elementFromPoint(menu.x + menu.width/2,menu.y + menu.height/2), button = main.querySelector('.menu-btn');
         return {
           corners:game.left >= 0 && game.left < innerWidth/2 && studio.right <= innerWidth && studio.left > innerWidth/2 && game.bottom < innerHeight/3 && studio.bottom < innerHeight/3,
-          // Portrait : rond ☰ en haut à gauche, au-dessus de la barre ; ailleurs, rond ☰ à gauche du dock.
+          // Portrait : ☰ rectangulaire en haut à gauche, au-dessus de la barre ; ailleurs, rond ☰ à gauche du dock.
           menuInside:layout === 'portrait'
             ? menu.left >= hud.left && menu.right <= hud.left + 68 && Math.abs(menu.top - hud.top) < 1
             : menu.left >= hud.left && menu.right <= hud.left + 68 && menu.bottom <= hud.bottom && menu.y + menu.height/2 >= hud.y + hud.height/2 - 1,
-          // En portrait, les ronds gardent les proportions de l'ordinateur par rapport à JOUER (≈ 42 px sur 390 px) : pas de minimum de 44 px.
+          // En portrait, les boutons gardent les proportions de l'ordinateur par rapport à JOUER (≈ 42 px de haut sur 390 px) : pas de minimum de 44 px.
           menuAccessible:(layout === 'portrait' || (menu.width >= 44 && menu.height >= 44)) && (hit === button || button.contains(hit)),
           distinct:controls.every(rect => menu.right <= rect.left || rect.right <= menu.left || menu.bottom <= rect.top || rect.bottom <= menu.top),
           headerButtons:main.querySelectorAll('.topbar button').length,
@@ -113,23 +113,9 @@ try {
         await page.keyboard.press('Escape');
       }
       if (family[0] === 'slots') {
-        // Bouton TURBO du dock dans tous les formats ; seul l'achat de bonus reste sur le décor.
+        // Bouton TURBO du dock dans tous les formats ; plus de bouton Achat de bonus sur le décor.
         await frame().locator('.dock').getByRole('button',{name:'Turbo',exact:true}).waitFor();
-        await frame().getByRole('button',{name:'Achat de bonus',exact:true}).waitFor();
-        const direct = await frame().locator('.slot-actions').evaluate((actions, layout) => {
-          const reels = document.querySelector('.reels').getBoundingClientRect();
-          const hud = document.querySelector('.dock').getBoundingClientRect();
-          return [...actions.querySelectorAll('button')].every(control => {
-            const rect = control.getBoundingClientRect(), hit = document.elementFromPoint(rect.x + rect.width/2,rect.y + rect.height/2);
-            const separate = rect.right <= reels.left || reels.right <= rect.left || rect.bottom <= reels.top || reels.bottom <= rect.top;
-            // En paysage, bouton-icône à gauche du dock ; ailleurs, juste au-dessus du dock.
-            const placed = layout === 'landscape'
-              ? rect.right <= hud.left && rect.top >= hud.top - 1 && rect.bottom <= hud.bottom + 1
-              : rect.left >= hud.left && rect.right <= hud.right && Math.abs(hud.top - rect.bottom - 8) < 1;
-            return rect.width >= 48 && rect.height >= 48 && rect.top >= 0 && placed && separate && (control === hit || control.contains(hit));
-          });
-        }, layout);
-        assert(direct,`Slots ${layout} : Achat de bonus visible près du dock et dégagé des rouleaux.`);
+        assert.equal(await frame().getByRole('button',{name:'Achat de bonus',exact:true}).count(),0,`Slots ${layout} : pas de bouton Achat de bonus.`);
       }
       const scene = await frame().locator('main').evaluate(main => {
         const bounds = element => {
@@ -156,8 +142,9 @@ try {
       }, `${family[1]} ${layout} : décor plein écran et commandes dégagées`);
       if (layout === 'portrait') {
         // Disposition de poulet-banane : barre de 93 % centrée, JOUER rond au centre, SOLDE à gauche et MISE à droite ;
-        // JOUER centré sur le bord haut de la barre ; au-dessus, ☰ et la difficulté côté SOLDE, AUTO et TURBO (symbole seul) côté MISE,
-        // la difficulté et AUTO creusés autour de JOUER ; − et + encadrent la mise.
+        // JOUER centré sur le bord haut de la barre ; au-dessus, toujours quatre boutons : ☰ et une place côté SOLDE,
+        // deux places côté MISE (difficulté, AUTO, TURBO, SON ou HISTORIQUE selon le jeu, symbole seul sauf la difficulté),
+        // creusés autour de JOUER ; les flèches ▲ ▼ sont dans le coin droit de la carte MISE.
         const portrait = await frame().locator('.dock-portrait').evaluate(dock => {
           const box = selector => dock.querySelector(selector).getBoundingClientRect(), center = rect => rect.left + rect.width / 2;
           const all = dock.getBoundingClientRect(), bar = box('.p-bar'), play = box('.master-play-btn'), menu = box('.menu-btn'), balance = box('.p-balance'), bet = box('.p-bet');
@@ -167,14 +154,52 @@ try {
             tabs:menu.bottom <= bar.top && Math.abs(menu.left - bar.left) < 1,
             cards:balance.right <= center(bar) && bet.left >= center(bar) && Math.abs(balance.top - bet.top) < 1,
             tabsRow:[...dock.querySelectorAll('.p-tabs .menu-btn, .p-tabs .p-tab, .p-difficulty .difficulty-pill')].every(tab => { const rect = tab.getBoundingClientRect(); return rect.bottom <= bar.top && rect.top >= all.top - 1; }),
-            sides:[...dock.querySelectorAll('.p-difficulty')].every(slot => slot.getBoundingClientRect().right <= center(bar)) &&
+            // Quatre boutons dans la rangée, quel que soit le jeu : ☰ + 3 places, de la même forme (rectangle
+            // arrondi, même hauteur), le ☰ et le dernier de la même largeur, séparés par un petit écart.
+            four:(() => {
+              const tabs = [...dock.querySelectorAll('.p-tabs .menu-btn, .p-tabs .p-tab, .p-difficulty .difficulty-pill')];
+              if (tabs.length !== 4) return false;
+              const boxes = tabs.map(tab => tab.getBoundingClientRect());
+              const radius = getComputedStyle(tabs[0]).borderRadius;
+              return boxes.every(box => Math.abs(box.height - boxes[0].height) < 1)
+                && tabs.every(tab => getComputedStyle(tab).borderRadius === radius && radius !== '50%')
+                && Math.abs(boxes[0].width - boxes[3].width) < 1 && Math.abs(boxes[1].width - boxes[2].width) < 1
+                && boxes[1].left - boxes[0].right < 6 && boxes[3].left - boxes[2].right < 6;
+            })(),
+            sides:[...dock.querySelectorAll('.p-difficulty, .p-left')].every(slot => slot.getBoundingClientRect().right <= center(bar)) &&
               [...dock.querySelectorAll('.p-auto, .p-turbo')].every(tab => tab.getBoundingClientRect().left >= center(bar)),
-            iconOnly:[...dock.querySelectorAll('.p-auto, .p-turbo')].every(tab => tab.textContent.trim() === ''),
-            steppers:(() => { const minus = box('.p-bet .stepper-btn.minus'), plus = box('.p-bet .stepper-btn.plus'), amount = box('.p-bet .bet-display'); return minus.right <= amount.left && amount.right <= plus.left; })(),
+            iconOnly:[...dock.querySelectorAll('.p-auto, .p-turbo, .p-left')].every(tab => tab.textContent.trim() === ''),
+            // MISE comme SOLDE : libellé au-dessus du montant, flèches ▲ (augmenter) au-dessus de ▼ (diminuer), à droite.
+            steppers:(() => {
+              const up = box('.p-bet .stepper-btn.up'), down = box('.p-bet .stepper-btn.down'), amount = box('.p-bet .bet-display');
+              const label = box('.p-bet .card-label'), value = box('.p-bet .card-value');
+              return up.bottom <= down.top && amount.right <= up.left && amount.right <= down.left
+                && label.bottom <= value.top && Math.abs(up.width - down.width) < 1
+                && value.right <= amount.right + 1 && value.left >= amount.left - 1;
+            })(),
             singleBalance:getComputedStyle(document.querySelector('.topbar .balance')).display === 'none',
           };
         });
         assert(Object.values(portrait).every(Boolean), `${family[1]} : barre portrait de poulet-banane. ${JSON.stringify(portrait)}`);
+      } else {
+        // Ordinateur, tablette, paysage : le bord droit des flèches de mise est creusé du même arc que la carte MISE,
+        // concentrique à JOUER ; les deux courbes restent donc parallèles, à l'écart qui les sépare.
+        const arc = await frame().locator('.bet-arrows').evaluate(arrows => {
+          const circle = element => {
+            const mask = getComputedStyle(element).maskImage;
+            const at = mask.match(/calc\(100% \+ ([\d.]+)px\)/), radius = mask.match(/0, 0\) ([\d.]+)px/);
+            return at && radius ? {offset:parseFloat(at[1]), r:parseFloat(radius[1])} : null;
+          };
+          const card = arrows.closest('.bet-card'), own = circle(arrows), outer = circle(card);
+          if (!own || !outer) return null;
+          const gap = card.getBoundingClientRect().right - arrows.getBoundingClientRect().right;
+          return {
+            carved:own.r > outer.r,
+            parallel:Math.abs((own.r - outer.r) - (own.offset - outer.offset)) < 0.5,
+            concentric:Math.abs((own.offset - outer.offset) - gap) < 1,
+          };
+        });
+        assert(arc && Object.values(arc).every(Boolean), `${family[1]} ${layout} : flèches de mise creusées sur la courbe de la carte. ${JSON.stringify(arc)}`);
       }
       await frame().locator('.dock').evaluate(async hud => {
         const animations = hud.getAnimations({subtree:true}).filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime));
@@ -184,22 +209,98 @@ try {
       await page.locator('iframe').screenshot({path:`reports/${family[0]}-${layout}.png`});
     }
     if (family[0] === 'crash') await frame().locator('[data-pixi-ready="true"]').waitFor({timeout:30000});
+    // Menu d'africa-tower : ✕ à la place du ≡, puis SON, PARAMÈTRES, INFO et TABLEAU DES GAINS ;
+    // chaque section ouvre sa fenêtre, Échap referme la fenêtre puis le menu.
     await frame().getByRole('button',{name:'Ouvrir le menu',exact:true}).click();
-    await frame().getByRole('dialog').waitFor();
+    const menu = frame().getByRole('dialog',{name:'Menu du jeu',exact:true});
+    await menu.waitFor();
+    for (const name of [/^Son (activé|désactivé)$/,'Paramètres','Info : règles du jeu','Tableau des gains']) await menu.getByRole('button',{name,exact:typeof name === 'string'}).waitFor();
+    // Le ✕ recouvre le ≡ à l'identique : même place, même taille et même forme (rond sur ordinateur, rectangle en portrait).
+    const onMenu = await frame().locator('main').evaluate(main => {
+      const trigger = main.querySelector('.dock .menu-btn'), closeButton = main.querySelector('.gm-close');
+      const menuButton = trigger.getBoundingClientRect(), close = closeButton.getBoundingClientRect();
+      return Math.abs(menuButton.left - close.left) < 1 && Math.abs(menuButton.top - close.top) < 1
+        && Math.abs(menuButton.width - close.width) < 1 && Math.abs(menuButton.height - close.height) < 1
+        && getComputedStyle(trigger).borderRadius === getComputedStyle(closeButton).borderRadius;
+    });
+    assert(onMenu,`${family[1]} : le ✕ du menu reprend la place, la taille et la forme du ≡.`);
+    for (const [name,title] of [['Paramètres','Paramètres'],['Info : règles du jeu','Règles du jeu'],['Tableau des gains','Tableau des gains']]) {
+      await menu.getByRole('button',{name,exact:true}).click();
+      await frame().getByRole('dialog',{name:title,exact:true}).waitFor();
+      await page.keyboard.press('Escape');
+      await frame().getByRole('dialog',{name:title,exact:true}).waitFor({state:'hidden'});
+      await menu.waitFor();
+    }
     await page.keyboard.press('Escape');
-    await frame().getByRole('dialog').waitFor({state:'hidden'});
+    await menu.waitFor({state:'hidden'});
     assert(await frame().getByRole('button',{name:'Ouvrir le menu',exact:true}).evaluate(button => button === document.activeElement),'Le focus revient au menu après fermeture.');
     console.log(`OK ${family[1]} : 4 formats sur le même serveur.`);
   }
+  // Ordinateur : dans le Crash, HISTORIQUE est posé au-dessus d'AUTO, de la même forme et de la même largeur.
+  await page.getByRole('navigation',{name:'Format d’écran'}).getByRole('button',{name:'Ordinateur',exact:true}).click();
+  await chooseFamily(...families[0]);
+  const stacked = await frame().locator('.options-stack').evaluate(stack => {
+    const historyButton = stack.querySelector('.history-btn'), autoButton = stack.querySelector('.auto-btn');
+    const history = historyButton.getBoundingClientRect(), auto = autoButton.getBoundingClientRect();
+    return history.bottom <= auto.top && Math.abs(history.width - auto.width) < 1 && Math.abs(history.height - auto.height) < 1;
+  });
+  assert(stacked,'Crash sur ordinateur : HISTORIQUE au-dessus d’AUTO, même forme.');
+  await frame().locator('.history-btn').click();
+  const deskRounds = frame().getByRole('group',{name:'Dernières manches',exact:true});
+  await deskRounds.waitFor();
+  assert.equal(await deskRounds.getByRole('listitem').count(),7,'HISTORIQUE sur ordinateur : les 7 dernières manches.');
+  await page.keyboard.press('Escape');
+  await deskRounds.waitFor({state:'hidden'});
   await page.getByRole('navigation',{name:'Format d’écran'}).getByRole('button',{name:'Mobile portrait',exact:true}).click();
   await chooseFamily(...families[0]);
   await frame().locator('.master-play-btn').click();
   await frame().locator('main[data-scenario="running"]').waitFor();
   // En jeu, ENCAISSER doré remplit la barre portrait, à la place de JOUER, du solde et de la mise.
   assert.equal(await frame().locator('.dock-portrait .master-play-btn').count(),0,'Crash en jeu : JOUER laisse la place à ENCAISSER.');
+  // ☰ descend dans la même barre qu’ENCAISSER (même hauteur, à gauche), au lieu de flotter seul en haut.
+  const crashLiveMenu = await frame().locator('.dock-portrait').evaluate(dock => {
+    const box = selector => dock.querySelector(selector)?.getBoundingClientRect();
+    const menu = box('.p-live-menu'), hero = box('.p-hero');
+    return !dock.querySelector('.p-tabs') && !!menu && !!hero && Math.abs(menu.top - hero.top) < 1 && Math.abs(menu.height - hero.height) < 1 && menu.right <= hero.left;
+  });
+  assert(crashLiveMenu,'Crash en jeu : ☰ harmonisé dans la barre, à la même hauteur qu’ENCAISSER.');
   await frame().getByRole('button',{name:/^Encaisser/}).click();
   await frame().locator('main[data-scenario="cashedOut"]').waitFor();
   assert.equal(await frame().getByLabel('Dernier gain',{exact:true}).count(),0,'Le panneau portrait n’affiche plus le dernier gain.');
+  // AUTO du Crash : nombre de tours, encaissement auto, AVANCÉ (objectif de gain / limite de perte), ACTIVER lance la série.
+  await frame().getByRole('button',{name:/^Encaisser/}).click();
+  await frame().locator('main[data-scenario="cashedOut"]').waitFor();
+  await frame().locator('.p-auto').click();
+  const crashAuto = frame().getByRole('dialog',{name:'Jeu automatique',exact:true});
+  await crashAuto.waitFor();
+  assert.equal(await crashAuto.getByRole('group',{name:'Nombre de tours',exact:true}).getByRole('button').count(),6,'6 choix de tours, ∞ compris.');
+  await crashAuto.getByRole('button',{name:'5 tours',exact:true}).click();
+  await crashAuto.getByRole('button',{name:/^Avancé/}).click();
+  await crashAuto.getByRole('checkbox',{name:'Arrêter quand la perte atteint la limite',exact:true}).click();
+  assert(await crashAuto.getByRole('button',{name:'Augmenter : Limite de perte',exact:true}).isEnabled(),'La limite de perte se règle une fois cochée.');
+  assert(await crashAuto.getByRole('button',{name:'Augmenter : Objectif de gain',exact:true}).isDisabled(),'L’objectif de gain reste grisé tant qu’il n’est pas coché.');
+  await crashAuto.getByRole('button',{name:'Activer',exact:true}).click();
+  await crashAuto.waitFor({state:'hidden'});
+  // Entre deux manches, AUTO est allumé en or et JOUER devient « Arrêter » (pendant la manche, seul ENCAISSER reste).
+  await frame().locator('main[data-scenario="queued"]').waitFor();
+  assert(await frame().locator('.p-auto').evaluate(button => button.classList.contains('auto-on')),'AUTO s’allume en or pendant la série.');
+  await frame().getByRole('button',{name:/^Arrêter le jeu automatique, encore 5 tours/}).waitFor();
+  await frame().locator('main[data-scenario="running"]').waitFor();
+  await frame().getByText(/^Série terminée : 5 tours/).waitFor({timeout:30000});
+  assert(!(await frame().locator('.p-auto').evaluate(button => button.classList.contains('auto-on'))),'AUTO s’éteint à la fin de la série.');
+  // La 4e place du crash : HISTORIQUE, qui montre les 7 dernières manches (la révélation a TURBO à cette place).
+  await frame().getByRole('button',{name:/^Historique :/}).click();
+  const rounds = frame().getByRole('group',{name:'Dernières manches',exact:true});
+  await rounds.waitFor();
+  assert.equal(await rounds.getByRole('listitem').count(),7,'HISTORIQUE : les 7 dernières manches.');
+  await page.keyboard.press('Escape');
+  await rounds.waitFor({state:'hidden'});
+  // SON : même bascule que dans le menu ≡ (volume principal partagé).
+  await frame().getByRole('button',{name:'Son activé : couper le son',exact:true}).click();
+  await frame().getByRole('button',{name:'Ouvrir le menu',exact:true}).click();
+  await frame().getByRole('button',{name:'Son désactivé',exact:true}).click();
+  await page.keyboard.press('Escape');
+  await frame().getByRole('button',{name:'Son activé : couper le son',exact:true}).waitFor();
   await frame().locator('.master-play-btn').click();
   await frame().locator('main[data-scenario="running"]').waitFor();
   await chooseFamily(...families[1]);
@@ -222,22 +323,36 @@ try {
   const next = frame().getByRole('button',{name:'Révéler une case au hasard',exact:true});
   assert.equal(await next.count(),1,'Révélation en jeu : un seul bouton pour révéler une case au hasard.');
   assert.equal((await next.textContent()).trim(),'','Révélation en jeu : la pierre verte montre une flèche, sans le mot JOUER.');
+  // ☰, ENCAISSER et la pierre verte (suivant) partagent la même barre, sans chevauchement de texte.
+  const revealLiveRow = await frame().locator('.dock-portrait').evaluate(dock => {
+    const box = selector => dock.querySelector(selector)?.getBoundingClientRect();
+    const menu = box('.p-live-menu'), hero = box('.p-hero'), label = box('.p-hero .hero-label'), amount = box('.p-hero .hero-amount'), play = box('.master-play-btn');
+    return !dock.querySelector('.p-tabs') && [menu,hero,label,amount,play].every(Boolean)
+      && Math.abs(menu.top - hero.top) < 1 && Math.abs(menu.height - hero.height) < 1 && menu.right <= hero.left
+      && label.right <= play.left && play.right <= amount.left;
+  });
+  assert(revealLiveRow,'Révélation en jeu : ☰, ENCAISSER et la pierre verte harmonisés, sans chevauchement.');
   await frame().getByRole('button',{name:'Révéler la case 1',exact:true}).click();
   await frame().locator('.cashout-btn-hero:enabled').click();
   await frame().locator('main[data-scenario="cashedOut"]').waitFor();
   await chooseFamily(...families[3]);
   await frame().locator('.dock').getByRole('button',{name:'Turbo',exact:true}).click();
   assert.equal(await frame().locator('.dock').getByRole('button',{name:'Turbo',exact:true}).getAttribute('aria-pressed'),'true','Turbo activé depuis le dock.');
+  // AUTO ouvre la fenêtre TOURS AUTO du web-sdk : nombre de tours, menu AVANCÉ (slots), LANCER L'AUTO-SPIN.
   await frame().getByRole('button',{name:'Ouvrir le jeu automatique',exact:true}).click();
-  assert.equal(await frame().getByRole('tab',{name:'Auto',exact:true}).getAttribute('aria-selected'),'true','Le bouton Auto ouvre directement ses réglages.');
-  await frame().getByRole('button',{name:'Lancer 3 tours',exact:true}).click();
-  await frame().getByRole('button',{name:'Arrêter le jeu automatique',exact:true}).click();
+  const autoSpin = frame().getByRole('dialog',{name:'Tours auto',exact:true});
+  await autoSpin.waitFor();
+  assert.equal(await autoSpin.getByRole('group',{name:'Nombre de tours',exact:true}).getByRole('button').count(),9,'Neuf choix de tours (10 à 1000 et ∞).');
+  await autoSpin.getByRole('group',{name:'Nombre de tours',exact:true}).getByRole('button',{name:'25',exact:true}).click();
+  await autoSpin.getByText('Avancé',{exact:true}).click();
+  await autoSpin.getByRole('group',{name:'Limite de perte',exact:true}).waitFor();
+  await autoSpin.getByRole('button',{name:"Lancer l'auto-spin",exact:true}).click();
+  // Pendant la série, AUTO s'allume en or, comme TURBO activé.
+  assert(await frame().locator('.dock').evaluate(dock => { const auto = dock.querySelector('.auto-btn, .p-auto'), turbo = dock.querySelector('.turbo-btn'); return auto.classList.contains('auto-on') && getComputedStyle(auto).color === getComputedStyle(turbo).color; }),'AUTO activé en or, comme TURBO.');
+  // Comme ButtonAutoSpin du web-sdk : pendant la série, AUTO l'arrête au lieu de rouvrir la fenêtre.
+  await frame().getByRole('button',{name:'Arrêter les tours auto',exact:true}).click();
   await frame().locator('.master-play-btn[data-action="bet"]:enabled').waitFor();
-  await frame().getByRole('button',{name:'Achat de bonus',exact:true}).click();
-  assert.equal(await frame().getByRole('tab',{name:'Gratuits',exact:true}).getAttribute('aria-selected'),'true');
-  await frame().getByRole('button',{name:'Commencer les 5 tours',exact:true}).click();
-  await frame().getByRole('button',{name:'Jouer un tour gratuit',exact:true}).click();
-  await frame().locator('.master-play-btn:enabled').waitFor();
+  assert.equal(await frame().getByRole('dialog',{name:'Tours auto',exact:true}).count(),0,'AUTO arrête la série sans rouvrir la fenêtre.');
   console.log('OK interactions : encaisser, risque, difficulté, modes Slots et arrêt Auto.');
 
   await chooseFamily(...families[1]);
@@ -288,18 +403,12 @@ try {
             return hit === button || button.contains(hit);
           }),
           play:dock.querySelector('.master-play-btn').getBoundingClientRect().width >= 64,
-          direct:[...document.querySelectorAll('.slot-actions button')].every(control => {
-            const rect = control.getBoundingClientRect(), hit = document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);
-            const reels = document.querySelector('.reels').getBoundingClientRect();
-            const separate = rect.right <= reels.left || reels.right <= rect.left || rect.bottom <= reels.top || reels.bottom <= rect.top;
-            return rect.width >= 48 && rect.height >= 48 && rect.left >= bounds.left && rect.right <= bounds.right && Math.abs(bounds.top - rect.bottom - 8) < 1 && separate && (hit === control || control.contains(hit));
-          }),
           overflow:document.documentElement.scrollWidth > innerWidth || document.documentElement.scrollHeight > innerHeight,
           logos:[...document.querySelectorAll('.brand,.studio-logo')].every(logo => { const rect = logo.getBoundingClientRect(); return rect.x >= 0 && rect.right <= innerWidth; }),
         };
       });
       assert(Math.abs(controls.ratio - .93) < .01, `${id} ${width}×${height} : barre de 93 % (${controls.ratio})`);
-      assert(controls.visible && controls.reachable && controls.play && controls.direct && controls.logos && !controls.overflow, `${id} ${width}×${height} : barre portrait visible, commandes séparées. ${JSON.stringify(controls)}`);
+      assert(controls.visible && controls.reachable && controls.play && controls.logos && !controls.overflow, `${id} ${width}×${height} : barre portrait visible, commandes séparées. ${JSON.stringify(controls)}`);
     }
   }
   console.log('OK barre portrait : disposition de poulet-banane (barre de 93 %, JOUER au centre, onglets ☰ / AUTO, SOLDE et MISE) sur petits et grands téléphones.');

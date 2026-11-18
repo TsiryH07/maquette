@@ -18,12 +18,13 @@ Ouvrir **http://localhost:3053**. Choisir ordinateur, tablette, mobile portrait 
 - Changer la mise avec `−`, `+` ou en touchant le montant.
 - Lancer les cinq rouleaux. La mise se verrouille pendant le mouvement.
 - Voir une ligne gagnante et son montant ; ce montant reste affiché si l'on prépare une autre mise.
-- Le bouton compact **Auto** ouvre directement les réglages automatiques. Les onglets **Manuel**, **Auto** et **Gratuits** restent accessibles dans cette même fenêtre. Le texte **Mode actuel** indique ce qui est réellement actif. Consulter un onglet ne lance rien.
-- Dans **Manuel**, retrouver le principe « un appui = un tour », puis revenir au jeu. Pendant l'auto, **Revenir au mode manuel** arrête les prochains tours ; le tour en cours se termine.
-- Dans **Auto**, choisir 3, 5 ou 10 tours, vérifier le total des mises et appuyer sur **Lancer**. Le bouton principal **Arrêter l’auto** permet d'interrompre la série. Le menu s'ouvre toujours pendant la série et permet aussi de l'arrêter.
-- Dans **Gratuits**, appuyer sur **Commencer les 5 tours**. Chaque tour se lance avec **Jouer** (le bouton indique les tours gratuits restants), sans nouvelle mise ; le compteur diminue et la mise reste verrouillée. Le bouton **Continuer les tours gratuits** referme simplement le menu si le bonus est déjà actif.
+- Le bouton **AUTO** ouvre la fenêtre **TOURS AUTO** du web-sdk (`../src/lib/AutoSpinModal.svelte`, reprise de `ModalAutoSpin`) : **NOMBRE DE TOURS** (10, 25, 50, 75, 100, 250, 500, 1000 ou ∞ ; pas de 1000 en paysage), le menu **AVANCÉ ▼** des slots avec **LIMITE DE PERTE** et **LIMITE DE GAIN UNIQUE** (5× à 100× la mise, ou ∞), puis **LANCER L'AUTO-SPIN**. La série s'arrête d'elle-même quand la perte cumulée atteint la limite ou qu'un gain atteint la limite de gain unique.
+- Pendant la série, **JOUER** devient **Arrêter** avec les tours restants, et un appui sur **AUTO** arrête aussi la série (comme le bouton AUTO du web-sdk) ; le tour en cours se termine.
+- Les tours gratuits de démonstration se voient avec « Moment de la partie : Tours gratuits » dans l'atelier ; chaque tour se lance avec **Jouer**, sans nouvelle mise.
+- En portrait, la rangée du haut garde quatre boutons : ☰, **SON** (même bascule que dans le menu ≡), AUTO et TURBO.
 - **Turbo** est le bouton TURBO du dock : à côté d'AUTO dans tous les formats (en portrait, AUTO et TURBO côte à côte au-dessus de la MISE, AUTO creusé autour de JOUER). Il s'applique aux trois modes et se verrouille pendant un lancer ou une série automatique. Le réglage n'est plus dupliqué dans la fenêtre Auto.
-- **Achat de bonus**, au-dessus du dock (à gauche du dock en paysage), ouvre directement le bonus de démonstration existant. La confirmation lance les cinq tours gratuits ; cette modification visuelle n'ajoute pas de tarif d'achat. Le bouton est verrouillé pendant une série, un lancer ou des tours gratuits.
+- Il n'y a plus de bouton **Achat de bonus** sur le décor.
+- Pendant une série automatique, le bouton **AUTO** s'allume en or, comme **TURBO** quand il est activé.
 - Ouvrir les paramètres pour les règles et la table de démonstration.
 
 La séquence est **fixe et illustrative** : un gain à ×2,50, un tour sans gain, puis un gain à ×1,20. Le tableau des symboles sert de maquette ; il ne définit pas les probabilités ou les règles d'un vrai jeu. Aucun hasard, aucun compte et aucun paiement. Le solde de présentation reste fixe. L'auto est borné et n'accepte pas une mise supérieure au solde fictif.
@@ -37,9 +38,7 @@ Les cinq scénarios de l'atelier sont : prêt à jouer, rouleaux en mouvement, t
 - `src/game/Game.svelte` : assemblage, états et parcours de démonstration.
 - `src/components/SlotBoard.svelte` : cinq rouleaux de trois symboles.
 - `src/components/SlotSymbol.svelte` : symboles SVG.
-- `src/components/SlotsHud.svelte` : mise, gain, turbo, auto, bonus et lancer.
-- `src/components/GameModes.svelte` : fenêtre commune des trois modes et choix des tours.
-- `src/components/SlotActions.svelte` : commandes Turbo et Achat de bonus en accès direct.
+- `src/components/SlotsHud.svelte` : branchement du dock commun (mise, auto, turbo, lancer).
 - `src/game.config.ts` : montants fictifs.
 - `src/game/scenarios.ts` : variantes de présentation.
 - `src/stories/Slots.stories.ts` : catalogue Storybook.

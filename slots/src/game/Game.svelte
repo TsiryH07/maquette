@@ -5,11 +5,11 @@
   import '../../../src/lib/scene.css';
   import config from '../game.config';
   import SlotBoard from '../components/SlotBoard.svelte';
-  import SlotActions from '../components/SlotActions.svelte';
   import SlotsHud from '../components/SlotsHud.svelte';
   import Icon from '../components/Icon.svelte';
-  import Sheet from '../components/Sheet.svelte';
-  import GameModes from '../components/GameModes.svelte';
+  import GameMenu from '../../../src/lib/GameMenu.svelte';
+  import SlotSymbol from '../components/SlotSymbol.svelte';
+  import AutoSpinModal from '../../../src/lib/AutoSpinModal.svelte';
   import { formatDecimal, formatMoney } from './format';
   import { detectLayout, type LayoutType } from './layouts';
   import { scenarios, type Scenario } from './scenarios';
@@ -17,14 +17,17 @@
 
   let { layout = 'auto', scenario = 'ready' }: { layout?: LayoutType | 'auto'; scenario?: Scenario } = $props();
   let host: HTMLElement;
-  let menu: ReturnType<typeof Sheet>;
-  let modes: ReturnType<typeof GameModes>;
-  let sound = $state(true);
+  let menu: ReturnType<typeof GameMenu>;
+  let autoModal: ReturnType<typeof AutoSpinModal>;
   let amount = $state(config.bet);
   let lastWin = $state(0);
   let resultFactor = $state(2.5);
   let turbo = $state(false);
   let autoRemaining = $state(0);
+  // Limites du menu AVANCÉ (en FCFA) et perte cumulée de la série.
+  let autoLossLimit = Infinity;
+  let autoWinLimit = Infinity;
+  let autoLoss = 0;
   let freeRemaining = $state(0);
   let phase = $state<Scenario>(scenario);
   let detected = $state<LayoutType>('desktop');
@@ -64,20 +67,22 @@
       if (isFree) freeRemaining = Math.max(0, freeRemaining - 1);
       if (autoRemaining > 0) {
         autoRemaining--;
+        // Arrêt anticipé : limite de perte atteinte, ou un gain au moins égal à la limite de gain unique.
+        autoLoss += (isFree ? 0 : roundBet) - lastWin;
+        if (autoLoss >= autoLossLimit || lastWin >= autoWinLimit) autoRemaining = 0;
         if (autoRemaining > 0) nextTimer = setTimeout(spin, turbo ? 180 : 600);
       }
     }, turbo ? 240 : 1000);
   }
 
-  function startAuto(rounds: number) {
+  // LANCER L'AUTO-SPIN : tours (Infinity pour ∞), limites en multiples de la mise (stateBet du web-sdk).
+  function startAuto(rounds: number, lossLimit = Infinity, singleWinLimit = Infinity) {
     if (busy || freeRemaining || autoRemaining) return;
+    autoLossLimit = amount * lossLimit;
+    autoWinLimit = amount * singleWinLimit;
+    autoLoss = 0;
     autoRemaining = rounds;
     spin();
-  }
-  function startBonus() {
-    if (busy || autoRemaining || freeRemaining) return;
-    freeRemaining = 5;
-    phase = 'freeSpins';
   }
   onMount(() => {
     let frame = 0;
@@ -105,25 +110,55 @@
       <div class="result" aria-live="polite">{#if phase === 'win'}<strong>+{formatMoney(lastWin)}</strong>{:else if phase === 'freeSpins'}<strong>{freeRemaining} tours gratuits</strong>{/if}</div>
     </section>
     <div class="controls-dock">
-      <SlotActions bonusLocked={choicesLocked || freeRemaining > 0} onbonus={() => modes.open('bonus')} />
       <SlotsHud layout={activeLayout} {amount} locked={choicesLocked} bind:turbo {autoRemaining} {freeRemaining}
         onsetamount={(value) => { if (!choicesLocked && !freeRemaining) amount = value; }}
-        onmodes={() => modes.open('auto')} onspin={spin} onstop={stopAuto} onmenu={() => menu.open()}/>
+        onauto={() => autoModal.open()} onspin={spin} onstop={stopAuto} onmenu={() => menu.open()}/>
     </div>
   </div>
 
-  <Sheet bind:this={menu} title="Paramètres et règles" closeLabel="Fermer le menu" layout={activeLayout}>
-    <label class="row"><span><strong>Son</strong><small>Option visuelle de la maquette.</small></span><input type="checkbox" aria-label="Son" bind:checked={sound}/></label>
-    <h3>Comment jouer</h3><ol><li>Choisissez la mise, puis appuyez sur « Lancer ».</li><li>Les cinq rouleaux s'arrêtent sur une séquence de démonstration.</li><li>Une ligne gagnante est mise en évidence et son gain reste affiché.</li></ol>
-    <h3>Table des gains de démonstration</h3><p class="note">Trois gemmes alignées : ×2,50 la mise. Trois anneaux alignés : ×1,20. Le prototype alterne un gain ×2,50, un tour sans gain, puis un gain ×1,20. Ce sont des exemples visuels, pas une table de jeu réelle.</p>
-    <p class="note">Solde fixe, aucun compte, aucune mise réelle, aucun paiement. Les sons sont illustratifs.</p>
-  </Sheet>
+  <!-- Menu du jeu (≡) : même menu qu'africa-tower — SON, PARAMÈTRES, INFO et TABLEAU DES GAINS. -->
+  <GameMenu bind:this={menu}>
+    {#snippet rules()}
+      <section>
+        <h2>Le principe</h2>
+        <p>Choisissez la mise, puis appuyez sur JOUER&nbsp;: les cinq rouleaux tournent puis s’arrêtent.</p>
+      </section>
+      <section>
+        <h2>Comment gagner</h2>
+        <p>Trois symboles identiques sur la ligne du milieu, en partant de la gauche, donnent un gain&nbsp;: la mise est multipliée par la valeur du symbole.</p>
+      </section>
+      <section>
+        <h2>Les modes</h2>
+        <p>AUTO lance 3, 5 ou 10 tours à la suite. L’onglet GRATUITS lance 5 tours gratuits. TURBO accélère les rouleaux.</p>
+      </section>
+      <section>
+        <h2>La maquette</h2>
+        <p>Solde fixe, aucun compte, aucune mise réelle, aucun paiement. Les sons sont illustratifs.</p>
+      </section>
+    {/snippet}
+    {#snippet payTable()}
+      <p class="pt-mode">Table des gains</p>
+      <p class="pt-intro">Trois symboles identiques sur la ligne du milieu, en partant de la gauche&nbsp;:</p>
+      <div class="pt-ladder">
+        {#each [{ symbol: 0, name: 'Gemme', factor: 2.5 }, { symbol: 2, name: 'Anneau', factor: 1.2 }] as row (row.symbol)}
+          <div class="pt-step">
+            <span class="pay-symbols" aria-hidden="true">{#each [0, 1, 2] as copy (copy)}<span class="pay-symbol"><SlotSymbol symbol={row.symbol} /></span>{/each}</span>
+            <span class="pt-index">{row.name} ×3</span><span class="pt-mult">×{formatDecimal(row.factor)}</span>
+          </div>
+        {/each}
+      </div>
+      <p class="pt-intro">Démonstration&nbsp;: la maquette alterne un gain ×2,50, un tour sans gain, puis un gain ×1,20.</p>
+    {/snippet}
+  </GameMenu>
 
-  <GameModes bind:this={modes} layout={activeLayout} {amount} {busy} {autoRemaining} {freeRemaining}
-    onauto={startAuto} onbonus={startBonus} onstop={stopAuto} />
+  <!-- AUTO : fenêtre TOURS AUTO du web-sdk, avec le menu AVANCÉ (limites de perte et de gain unique) des slots. -->
+  <AutoSpinModal bind:this={autoModal} advanced landscape={activeLayout === 'landscape'} disabled={amount > config.balance} onstart={startAuto} />
 </main>
 
 <style>
+  /* Table des gains : les trois symboles de la ligne gagnante. */
+  .pay-symbols { display:flex; gap:4px; margin-bottom:6px; }
+  .pay-symbol { display:grid; width:34px; height:34px; }
   .content { flex:1; min-height:0; display:grid; grid-template-rows:minmax(180px,1fr) auto; gap:12px; }
   .controls-dock { display:grid; gap:8px; width:100%; max-width:1280px; min-width:0; justify-self:center; }
   .playfield { position:relative; min-width:0; min-height:0; overflow:hidden; container-type:size; border:1px solid var(--line); border-radius:20px; background:radial-gradient(90% 70% at 50% 100%,#3b1f6b66,transparent 70%),var(--surface); }
@@ -139,14 +174,6 @@
   .game[data-layout='portrait'] .result strong { font-size:22px; }
   .game[data-layout='landscape'] .content { grid-template-rows:minmax(0,1fr) auto; gap:8px; }
   .game[data-layout='landscape'] .controls-dock { align-self:end; }
-  /* Mobile paysage : Turbo et Achat de bonus deviennent deux boutons-icônes à gauche du dock,
-     pour laisser la hauteur de l'écran aux rouleaux. Les libellés restent lus par les lecteurs d'écran. */
-  .game[data-layout='landscape'] .controls-dock { grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:8px; }
-  .game[data-layout='landscape'] .controls-dock :global(.slot-actions) { width:auto; grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:48px; }
-  .game[data-layout='landscape'] .controls-dock :global(:is(.turbo, .bonus)) { width:48px; padding:0; }
-  .game[data-layout='landscape'] .controls-dock :global(:is(.turbo > span, .bonus > span:last-child)) { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
-  .game[data-layout='landscape'] :global(.slot-controls) { padding:8px; gap:6px; }
-  .game[data-layout='landscape'] :global(.slot-controls > .bet) { padding:4px; }
   .game[data-layout='landscape'] .board-area { inset:36px 12px 36px; }
   /* Écran court : la largeur des rouleaux suit la hauteur disponible pour garder des cases presque carrées. */
   .game[data-layout='landscape'] .board-area :global(.reels) { width:min(100%, calc((100cqh - 72px) * 1.8)); height:100%; min-height:0; }

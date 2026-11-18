@@ -65,11 +65,12 @@ try {
   assert.equal((await scene.getByLabel('Gain affiché', { exact: true }).textContent()).trim(), '560,00');
   await scene.getByRole('button', { name: 'Ouvrir le jeu automatique', exact: true }).click();
   await scene.getByRole('dialog', { name: 'Jeu automatique' }).waitFor();
-  await scene.getByRole('checkbox', { name: 'Activer le jeu automatique', exact: true }).check();
   await scene.getByRole('group', { name: 'Nombre de parties' }).getByRole('button', { name: '25 parties', exact: true }).click();
   await scene.getByRole('group', { name: 'Nombre de parties' }).locator('.indicator').evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
   await page.locator('iframe').screenshot({ path: 'reports/options.png' });
-  await scene.getByRole('button', { name: 'Terminé', exact: true }).click();
+  assert.equal(await scene.getByRole('dialog', { name: 'Jeu automatique' }).getByRole('checkbox').count(), 0, 'Pas d’interrupteur : « Activer » lance la série.');
+  await scene.getByRole('dialog', { name: 'Jeu automatique' }).getByRole('button', { name: 'Activer', exact: true }).waitFor();
+  await scene.getByRole('button', { name: 'Fermer le jeu automatique', exact: true }).click();
   await scene.getByRole('button', { name: 'Modifier le montant de la mise', exact: true }).click();
   await scene.getByRole('group', { name: 'Montants de mise' }).getByRole('button', { name: '10 FCFA', exact: true }).click();
   await scene.getByRole('button', { name: 'Terminé', exact: true }).click();

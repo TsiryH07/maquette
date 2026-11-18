@@ -5,23 +5,25 @@
   import config from '../game.config';
   import { formatMoney, formatNumber } from '../game/format';
   import type { LayoutType } from '../game/layouts';
-  let { layout, amount, locked, turbo = $bindable(false), autoRemaining, freeRemaining, onsetamount, onmodes, onspin, onstop, onmenu }: {
+  let { layout, amount, locked, turbo = $bindable(false), autoRemaining, freeRemaining, onsetamount, onauto, onspin, onstop, onmenu }: {
     layout: LayoutType; amount: number; locked: boolean; turbo?: boolean; autoRemaining: number; freeRemaining: number;
-    onsetamount: (value:number)=>void; onmodes:()=>void; onspin:()=>void; onstop:()=>void;
+    onsetamount: (value:number)=>void; onauto:()=>void; onspin:()=>void; onstop:()=>void;
     onmenu:()=>void;
   } = $props();
   let betSheet: ReturnType<typeof Sheet>;
   function chooseAmount(value: number) {
     if (value !== amount) onsetamount(value);
   }
+  // Tours restants de la série (∞ : jusqu'à l'arrêt).
+  const toursLeft = $derived(autoRemaining === Infinity ? '∞ tours' : `${autoRemaining} tour${autoRemaining > 1 ? 's' : ''}`);
 
 </script>
 <!-- Tous les formats, portrait compris : dock commun (disposition de poulet-banane en portrait). -->
 <CasinoControlDock portrait={layout === 'portrait'} floating={false} balance={config.balance} bet={amount} onchangebet={chooseAmount}
   betOptions={config.betAmountOptions} onbetclick={() => betSheet.open()} betLocked={freeRemaining > 0}
-  difficulties={[]} isAuto={autoRemaining > 0} onautoclick={onmodes} bind:isTurbo={turbo} turboLocked={locked} gameType="slots" isPlaying={locked}
+  difficulties={[]} isAuto={autoRemaining > 0} onautoclick={autoRemaining > 0 ? onstop : onauto} autoAriaLabel={autoRemaining > 0 ? 'Arrêter les tours auto' : undefined} bind:isTurbo={turbo} turboLocked={locked} gameType="slots" isPlaying={locked}
   playLabel={autoRemaining > 0 ? 'Arrêter' : locked ? 'En cours' : 'Jouer'}
-  playDetail={autoRemaining > 0 ? `${autoRemaining} tours` : freeRemaining > 0 ? `${freeRemaining} gratuits` : undefined}
+  playDetail={autoRemaining > 0 ? toursLeft : freeRemaining > 0 ? `${freeRemaining} gratuits` : undefined}
   playAction={autoRemaining > 0 ? 'cancel' : locked ? 'busy' : 'bet'} playDisabled={locked && autoRemaining === 0}
   playAriaLabel={autoRemaining > 0 ? 'Arrêter le jeu automatique' : locked ? 'Rouleaux en mouvement' : freeRemaining ? 'Jouer un tour gratuit' : 'Jouer'}
   onplay={autoRemaining > 0 ? onstop : onspin} {onmenu} />

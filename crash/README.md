@@ -40,9 +40,20 @@ Le parcours visuel est le suivant : choisir une mise, cliquer sur « JOUER », p
 
 La mise commence à 10 FCFA, avec les raccourcis 100, 200, 500 et 1 000. Un clic sur le montant ouvre tous les montants possibles (de 10 à 1 000). Par exemple, une mise de 100 FCFA à ×2,35 permet de représenter un encaissement de 235,00 FCFA. Un gain encaissé reste affiché même si l'on prépare une autre mise.
 
-La vue « Mise en attente » montre l'annulation possible avant le départ. La vue « Crash · mise perdue » montre la perte de la mise. Ces vues se choisissent dans l'atelier : le prototype ne simule ni compte à rebours, ni hasard, ni manches en temps réel. Le clic sur « Miser » passe directement à la vue de manche en cours ; le clic sur « Encaisser » passe à la vue de gain encaissé.
+La vue « Mise en attente » montre l'annulation possible avant le départ. La vue « Crash · mise perdue » montre la perte de la mise. Ces vues se choisissent dans l'atelier : en dehors du jeu automatique, le prototype ne simule ni compte à rebours, ni hasard, ni manches en temps réel. Le clic sur « Miser » passe directement à la vue de manche en cours ; le clic sur « Encaisser » passe à la vue de gain encaissé.
 
-Le bouton « Auto » ouvre le pari automatique et l'encaissement automatique à un multiplicateur choisi ; il résume ensuite le réglage actif (par exemple « Encaisse à ×2,00 »). Sur mobile portrait, les fenêtres s'ouvrent depuis le bas de l'écran. Les automatismes et le son sont illustratifs. Les montants et les résultats sont fictifs : aucun compte, aucune connexion au serveur de jeux, aucun paiement. Le solde de présentation ne change pas.
+En portrait, la rangée du haut garde quatre boutons de la même forme, comme les autres jeux : **☰**, **SON** (même bascule que dans le menu ≡), **AUTO** et **HISTORIQUE**, qui ouvre la liste des 7 dernières manches. Une manche par ligne, de la plus récente à la plus ancienne, avec son rang écrit à gauche (« Dernière », « Avant-dernière », « 3ᵉ avant »…) et son multiplicateur à droite, aux couleurs des pastilles au-dessus de la courbe ; la dernière manche est mise en avant. La liste garde les mêmes proportions dans tous les formats, avec un plancher de taille pour rester lisible sur les petits écrans. Sur ordinateur, tablette et en paysage, **HISTORIQUE** est posé au-dessus d'**AUTO** dans la pile d'options, du même rectangle arrondi et de la même largeur ; la liste s'ouvre au-dessus de la pile, alignée sur son bord droit.
+
+Le bouton « Auto » ouvre la fenêtre **Jeu automatique** (`../src/lib/CrashAutoModal.svelte`), aux couleurs et avec les contrôles du panneau d'**avia-djo** :
+
+- **Nombre de tours** : 5, 10, 25, 50, 100 ou ∞ ;
+- **Encaissement auto** : case et cible [−] 2,00× [+] (pas de 0,10, de 1,01× à 100×), comme « Encaiss. auto » d'avia-djo ;
+- **Avancé**, façon trading : **objectif de gain** (take profit) et **limite de perte** (stop loss), chacun avec sa case et son montant en FCFA ; la série s'arrête dès que le bilan de la série atteint l'un des deux ;
+- un récapitulatif (mise par tour, somme engagée au plus) et **ACTIVER**, qui ferme la fenêtre et lance la série.
+
+Pendant la série, AUTO est allumé en or et la mise est verrouillée. Les manches sont simulées : la courbe monte, la manche est encaissée à la cible si elle l'atteint avant le crash, sinon la mise est perdue. Les points de crash suivent une liste fixe pour que la démonstration soit reproductible. Pendant une manche, JOUER reste ENCAISSER (encaissement manuel possible) ; entre deux manches, il devient « Arrêter » avec les tours restants. Pendant la manche, en portrait, le ☰ descend dans la barre à côté d'ENCAISSER, à la même hauteur, plutôt que de rester seul au-dessus. Entre deux manches, AUTO ou « Arrêter » met fin à la série. Le message sous le multiplicateur suit la série (tour, bilan, cible), puis indique pourquoi elle s'est arrêtée : tours épuisés, objectif de gain, limite de perte ou arrêt manuel. Le solde et l'historique des manches suivent les résultats de la série.
+
+Le son est illustratif. Les montants et les résultats sont fictifs : aucun compte, aucune connexion au serveur de jeux, aucun paiement.
 
 ## Ressemblance avec le Web SDK
 

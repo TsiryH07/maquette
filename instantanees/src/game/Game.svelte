@@ -7,15 +7,14 @@
   import InstantHud from '../components/InstantHud.svelte';
   import DiceStage from '../components/DiceStage.svelte';
   import Icon from '../components/Icon.svelte';
-  import Sheet from '../components/Sheet.svelte';
+  import GameMenu from '../../../src/lib/GameMenu.svelte';
   import { formatDecimal } from './format';
   import { detectLayout, type LayoutType } from './layouts';
-  import { risks, type Risk, type Scenario } from './scenarios';
+  import { risks, riskTypes, type Risk, type Scenario } from './scenarios';
   import './theme.css';
   let { layout = 'auto', scenario = 'ready' }: { layout?: LayoutType | 'auto'; scenario?: Scenario } = $props();
   let host: HTMLElement;
-  let menu: ReturnType<typeof Sheet>;
-  let sound = $state(true);
+  let menu: ReturnType<typeof GameMenu>;
   let detected = $state<LayoutType>('desktop');
   let phase = $state<Scenario>(scenario);
   let amount = $state(config.bet);
@@ -28,11 +27,14 @@
   let previous: Scenario | undefined;
   let turn = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // Jeu automatique : parties restant à jouer (celle en cours comprise) et pause avant la suivante.
+  let autoRemaining = $state(0);
+  let autoTimer: ReturnType<typeof setTimeout> | undefined;
   const activeLayout = $derived(layout === 'auto' ? detected : layout);
   const payout = $derived(phase === 'won' ? Math.round(resultBet * risks[resultRisk].factor * 100) / 100 : 0);
   $effect(() => {
     if (previous !== scenario) {
-      clearTimeout(timer); phase = scenario; resultBet = amount; resultRisk = risk;
+      clearTimeout(timer); clearTimeout(autoTimer); autoRemaining = 0; phase = scenario; resultBet = amount; resultRisk = risk;
       resultFace = scenario === 'lost' ? 1 : Math.max(5,risks[risk].min); previous = scenario;
     }
   });
@@ -43,9 +45,23 @@
       const wins = turn++ % 2 === 0;
       resultFace = wins ? Math.max(5,risks[resultRisk].min) : 1;
       phase = wins ? 'won' : 'lost';
+      if (autoRemaining > 0) {
+        autoRemaining -= 1;
+        if (autoRemaining > 0) autoTimer = setTimeout(play, turbo ? 350 : 900);
+      }
     }, turbo ? 250 : 650);
   }
-  onDestroy(() => clearTimeout(timer));
+  // « Activer » : lance la série tout de suite ; « Arrêter » : la partie en cours se termine, aucune autre ne suit.
+  function startAuto(count: number) {
+    if (phase === 'playing' || count <= 0) return;
+    autoRemaining = count;
+    play();
+  }
+  function stopAuto() {
+    autoRemaining = 0;
+    clearTimeout(autoTimer);
+  }
+  onDestroy(() => { clearTimeout(timer); clearTimeout(autoTimer); });
   onMount(() => {
     let resizeFrame = 0;
     const observer = new ResizeObserver(([entry]) => {
@@ -76,12 +92,45 @@
 
   <div class="content">
     <section class="stage" aria-label="Zone du jeu de dés"><DiceStage scenario={phase} playedRisk={resultRisk} face={resultFace} {payout} {turbo} /></section>
-    <InstantHud scenario={phase} layout={activeLayout} bind:amount bind:risk bind:turbo onaction={play} onmenu={() => menu.open()} />
+    <InstantHud scenario={phase} layout={activeLayout} bind:amount bind:risk bind:turbo {autoRemaining} onaction={play} onautostart={startAuto} onautostop={stopAuto} onmenu={() => menu.open()} />
   </div>
-  <Sheet bind:this={menu} title="Menu du jeu" closeLabel="Fermer le menu" layout={activeLayout}>
-    <label class="row"><span><strong>Son</strong><small>Option visuelle de la maquette.</small></span><input type="checkbox" aria-label="Son" bind:checked={sound} /></label>
-    <h3 class="section-title">Comment jouer</h3>
-    <ol><li>Choisissez un niveau de risque.</li><li>Réglez la mise, puis appuyez sur « Jouer ».</li><li>Le résultat du dé indique immédiatement le gain.</li></ol>
-    <p class="note">Démonstration déterministe : un résultat gagnant puis un résultat sans gain. Aucun paiement ni tirage réel. Le solde ne change pas.</p>
-  </Sheet>
+  <!-- Menu du jeu (≡) : même menu qu'africa-tower — SON, PARAMÈTRES, INFO et TABLEAU DES GAINS. -->
+  <GameMenu bind:this={menu}>
+    {#snippet rules()}
+      <section>
+        <h2>Le principe</h2>
+        <p>Choisissez un risque et une mise, puis appuyez sur JOUER&nbsp;: le dé est lancé une fois.</p>
+      </section>
+      <section>
+        <h2>Comment gagner</h2>
+        <p>Vous gagnez si le dé atteint l’objectif du risque choisi&nbsp;: votre mise est alors multipliée par le gain de ce risque.</p>
+      </section>
+      <section>
+        <h2>Les risques</h2>
+        <p>Plus l’objectif est difficile, plus le gain est élevé.</p>
+        <ul>
+          {#each riskTypes as value (value)}
+            <li><strong>{risks[value].label}</strong> — {risks[value].hint}, gain ×{formatDecimal(risks[value].factor)}</li>
+          {/each}
+        </ul>
+      </section>
+      <section>
+        <h2>Auto et turbo</h2>
+        <p>AUTO enchaîne 10, 25 ou 50 parties avec la même mise et le même risque&nbsp;; ARRÊTER interrompt la série. TURBO accélère le lancer.</p>
+      </section>
+      <section>
+        <h2>La maquette</h2>
+        <p>Démonstration déterministe&nbsp;: un résultat gagnant puis un résultat sans gain. Aucun paiement ni tirage réel.</p>
+      </section>
+    {/snippet}
+    {#snippet payTable()}
+      <p class="pt-mode">Risque&nbsp;: <strong>{risks[risk].label}</strong></p>
+      <p class="pt-intro">Si le dé atteint l’objectif, la mise est multipliée par le gain du risque choisi.</p>
+      <div class="pt-ladder">
+        {#each riskTypes as value (value)}
+          <div class="pt-step" class:pt-next={value === risk}><span class="pt-index">{risks[value].label} · {risks[value].hint}</span><span class="pt-mult">×{formatDecimal(risks[value].factor)}</span></div>
+        {/each}
+      </div>
+    {/snippet}
+  </GameMenu>
 </main>

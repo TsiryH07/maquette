@@ -12,6 +12,4 @@
   .selected { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
   .selected strong { margin-left: 4px; color: var(--text); font-size: 18px; }
   .options .chip { min-height: 48px; font-size: 16px; }
-  .target { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-  .target output { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .target.inactive output { color: var(--muted); }
+

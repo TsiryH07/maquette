@@ -6,6 +6,10 @@
   export type PlayAction = 'bet' | 'cashout' | 'cancel' | 'busy';
   /** Type de jeu : décide de la barre affichée pendant une manche. */
   export type GameType = 'crash' | 'reveal' | 'slots' | 'dice';
+  /** Boutons possibles des trois places qui entourent JOUER en portrait, à côté du ☰. */
+  export type PortraitTab = 'difficulty' | 'auto' | 'turbo' | 'sound' | 'history';
+  /** Une manche passée, pour la liste « Historique » du portrait (la plus récente en premier). */
+  export type HistoryEntry = { label: string; tier?: 'low' | 'mid' | 'high' | 'win' | 'loss' };
   /** Ce que reçoit `onplay` au clic sur le gros bouton. */
   export type PlayDetail<D extends string = Difficulty> = { bet: number; difficulty: D; isAuto: boolean };
   // Identifiants uniques pour les dégradés et découpes SVG de la barre portrait.
@@ -27,6 +31,7 @@
    * ou réduit l'ensemble, --dock-bottom règle la marge basse.
    */
   import { tick } from 'svelte';
+  import { sound } from './sound.svelte';
 
   type Props = {
     balance?: number;
@@ -53,6 +58,10 @@
     showTurbo?: boolean;
     /** Verrouille seulement TURBO (ex. pendant une série automatique). */
     turboLocked?: boolean;
+    /** Manches passées : en portrait, la 4e place devient « Historique » et en montre les 7 dernières. */
+    history?: readonly HistoryEntry[];
+    /** Titre de la liste « Historique ». */
+    historyTitle?: string;
     isPlaying?: boolean;
     disabled?: boolean;
     /** Pendant une manche (isPlaying) : crash → menu + ENCAISSER ; reveal → menu + ENCAISSER + JOUER (oncontinue) ;
@@ -86,6 +95,8 @@
     onchangebet?: (bet: number) => void;
     /** Si fourni, AUTO ouvre les réglages du jeu au lieu de basculer directement. */
     onautoclick?: () => void;
+    /** Nom lu par les lecteurs d'écran pour AUTO, quand son action change (ex. « Arrêter les tours auto » pendant une série). */
+    autoAriaLabel?: string;
     /** Si fourni, toucher le montant de la mise ouvre la liste du jeu. */
     onbetclick?: () => void;
   };
@@ -107,6 +118,8 @@
     isTurbo = $bindable(false),
     showTurbo = true,
     turboLocked = false,
+    history = [],
+    historyTitle = 'Dernières manches',
     isPlaying = false,
     disabled = false,
     gameType = 'crash',
@@ -128,6 +141,7 @@
     onchangedifficulty,
     onchangebet,
     onautoclick,
+    autoAriaLabel,
     onbetclick,
   }: Props = $props();
 
@@ -169,12 +183,39 @@
   }
 
   const showDifficulty = $derived(difficulties.length > 0);
+  /*
+   * Portrait : la rangée du haut garde toujours quatre boutons, pour la symétrie autour de JOUER —
+   * ☰ et une place à gauche, deux places à droite. Chaque jeu y met ce qu'il a (difficulté, AUTO, TURBO) ;
+   * les places restantes sont complétées par SON (même bascule que dans le menu ≡) puis HISTORIQUE.
+   */
+  const portraitTabs = $derived.by(() => {
+    const wanted = [showDifficulty && 'difficulty', showAuto && 'auto', showTurbo && 'turbo'].filter(Boolean) as PortraitTab[];
+    const extras = (['sound', 'history'] as const).filter((tab) => tab !== 'history' || history.length > 0);
+    const places: (PortraitTab | null)[] = [null, null, null];
+    // Chaque composant du jeu garde sa place habituelle ; les trous sont bouchés dans l'ordre.
+    for (const tab of wanted) places[tab === 'difficulty' ? 0 : tab === 'auto' ? 1 : 2] = tab;
+    for (const extra of extras) {
+      const index = places.indexOf(null);
+      if (index >= 0) places[index] = extra;
+    }
+    return places;
+  });
+  const lastRounds = $derived(history.slice(0, 7));
+  const showHistory = $derived(history.length > 0);
+  let historyOpen = $state(false);
+  let historyBox = $state<HTMLDivElement>();
+  function historyClick() {
+    historyOpen = !historyOpen;
+    menuOpen = false;
+  }
   // Les libellés longs (« Encaisser », « Nouvelle partie ») rétrécissent pour rester dans le bouton.
   const longestWord = $derived(Math.max(...playLabel.split(/\s+/).map((word) => word.length)));
   const playTextScale = $derived(longestWord > 6 ? Math.max(0.62, 6 / longestWord) : 1);
   // Le triangle ▶ accompagne seulement un libellé court d'un mot (Jouer, Miser, Lancer…).
   const showPlayIcon = $derived(playAction === 'bet' && !/\s/.test(playLabel.trim()));
   const playName = $derived(playAriaLabel ?? (playDetail ? `${playLabel} ${playDetail}` : playLabel));
+  // Un montant très long (« 1 000 000 000 ») rétrécit pour rester entier dans la carte MISE.
+  const betScale = $derived(Math.max(0.5, Math.min(1, 7 / formatBet(bet).length)));
 
   // Le jeu automatique reste réglable pendant une manche, pour pouvoir l'arrêter.
   function autoClick() {
@@ -234,13 +275,32 @@
   });
   $effect(() => { if (locked) menuOpen = false; });
 
+  // La liste « Historique » se ferme de la même façon.
+  $effect(() => {
+    if (!historyOpen) return;
+    const outside = (event: PointerEvent) => { if (!historyBox?.contains(event.target as Node)) historyOpen = false; };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      historyOpen = false;
+      historyBox?.querySelector<HTMLButtonElement>('button')?.focus();
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  });
+  $effect(() => { if (liveMode) historyOpen = false; });
+
   // ── Portrait : géométrie de poulet-banane, en unités de son cadre de 1080 de large ──
   // Barre de 1004 (93 %) qui ne contient que SOLDE et MISE ; JOUER de 240 centré sur son bord haut, dans un collier
-  // de rayon 128 qui fait partie de la barre. La rangée de 123 posée au-dessus l'entoure : ☰ puis la difficulté
-  // côté SOLDE, AUTO puis TURBO côté MISE. La difficulté, AUTO et les cartes sont creusées en arc de rayon 136
-  // autour de JOUER, sur toute leur hauteur ; − et + encadrent la mise, comme sur ordinateur.
+  // de rayon 128 qui fait partie de la barre. La rangée de 123 posée au-dessus l'entoure, avec toujours quatre boutons
+  // de la même matière, serrés par un petit écart : ☰ (rectangle de la largeur du 4e bouton) et une place large côté
+  // SOLDE, deux places côté MISE. Les deux places du milieu et les cartes sont creusées en arc de rayon 136 autour
+  // de JOUER, sur toute leur hauteur ; − et + encadrent la mise, comme sur ordinateur.
   const uid = `dock-${++nextId}`;
-  const PB = { barW: 1004, pad: 14, cards: 160, ring: 128, creux: 136, corner: 26, mid: 6, stepper: 84, betLeft: 508, row: 123, rowGap: 10, gap: 16 };
+  const PB = { barW: 1004, pad: 14, cards: 160, ring: 128, creux: 136, corner: 26, mid: 6, stepper: 84, betLeft: 508, row: 123, rowGap: 10, gap: 10 };
   // Pendant une manche de crash ou de révélation, la mise, le solde et les options disparaissent.
   const liveMode = $derived(isPlaying && (gameType === 'crash' || gameType === 'reveal') ? gameType : null);
   // En crash, pendant la manche, JOUER s'efface : la barre perd son collier et ENCAISSER prend toute la place.
@@ -254,21 +314,27 @@
     // TURBO a la même largeur visible qu'AUTO.
     const tabCy = playCy + PB.rowGap + PB.row;
     const inner = arc(tabCy), midArc = arc(tabCy - PB.row / 2);
+    // Côté MISE : deux boutons de part et d'autre de l'écart. Le ☰ reprend la largeur du dernier,
+    // pour que les quatre boutons se répondent de chaque côté de JOUER.
     const turboW = (W - (cx + midArc) - PB.gap) / 2;
+    const tabLeft = turboW + PB.gap;
     // Le texte du SOLDE reste dégagé du creux à la hauteur du libellé.
     const cardPad = Math.max(16, arc(cardsTop + PB.cards * 0.3 - playCy) - PB.mid + 12);
     // − commence juste après le creux, à mi-hauteur de la carte MISE.
     const stepDy = cardsTop + PB.cards / 2 - playCy, stepR = PB.creux + PB.stepper / 2;
     const stepPad = cx + Math.sqrt(stepR ** 2 - stepDy ** 2) - PB.stepper / 2 - PB.betLeft + 4;
     // Contour de la barre : rectangle arrondi et collier circulaire autour de JOUER (contourBarre de poulet-banane).
+    // En jeu (révélation), la pierre verte se recentre sur l'espace qui reste à droite du ☰ (598) ; le collier du
+    // contour la suit, pour rester exactement sous elle au lieu de rester calé sur le centre d'origine (502).
+    const notchCx = liveMode === 'reveal' ? 598 : cx;
     const dxTop = playCy < r ? Math.sqrt(r * r - playCy ** 2) : 0;
     const dxBottom = H - playCy < r ? Math.sqrt(r * r - (H - playCy) ** 2) : 0;
-    const top = `M ${c} 0` + (dxTop ? ` L ${cx - dxTop} 0 A ${r} ${r} 0 0 1 ${cx + dxTop} 0` : '') + ` L ${W - c} 0`;
+    const top = `M ${c} 0` + (dxTop ? ` L ${notchCx - dxTop} 0 A ${r} ${r} 0 0 1 ${notchCx + dxTop} 0` : '') + ` L ${W - c} 0`;
     const path = top + ` A ${c} ${c} 0 0 1 ${W} ${c} L ${W} ${H - c} A ${c} ${c} 0 0 1 ${W - c} ${H}`
-      + (dxBottom ? ` L ${cx + dxBottom} ${H} A ${r} ${r} 0 0 1 ${cx - dxBottom} ${H}` : '')
+      + (dxBottom ? ` L ${notchCx + dxBottom} ${H} A ${r} ${r} 0 0 1 ${notchCx - dxBottom} ${H}` : '')
       + ` L ${c} ${H} A ${c} ${c} 0 0 1 0 ${H - c} L 0 ${c} A ${c} ${c} 0 0 1 ${c} 0 Z`;
     const frameTop = Math.min(0, playCy - r) - 3, frameBottom = Math.max(H, playCy + r) + 3;
-    return { playCy, cardsTop, H, cardPad, stepPad, tabCy, inner, midArc, turboW, path, top, frameTop, frameH: frameBottom - frameTop };
+    return { playCy, cardsTop, H, cardPad, stepPad, tabCy, inner, midArc, turboW, tabLeft, gap: PB.gap, path, top, frameTop, frameH: frameBottom - frameTop };
   });
 
   function cashout() {
@@ -285,13 +351,24 @@
 </script>
 
 {#snippet betValue()}
-  <span class="card-label">Mise&nbsp;:</span>
+  <span class="card-label">Mise · {currency}</span>
   {#key bet}<span class="card-value bet-value">{formatBet(bet)}</span>{/key}
-  <span class="currency-sub">{currency}</span>
 {/snippet}
 
-{#snippet menuButton()}
-  <button type="button" class="menu-btn" aria-label="Ouvrir le menu" aria-haspopup="dialog" title="Menu" {disabled} onclick={() => onmenu?.()}>
+{#snippet betArrows()}
+  <!-- Flèches haut / bas dans le coin droit de la carte : + en haut, − en bas. -->
+  <div class="bet-arrows">
+    <button type="button" class="stepper-btn up" aria-label="Augmenter la mise" title="Augmenter la mise" disabled={!canIncrease} onclick={() => changeBet(1)}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6" /></svg>
+    </button>
+    <button type="button" class="stepper-btn down" aria-label="Diminuer la mise" title="Diminuer la mise" disabled={!canDecrease} onclick={() => changeBet(-1)}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </button>
+  </div>
+{/snippet}
+
+{#snippet menuButton(extraClass = '')}
+  <button type="button" class="menu-btn {extraClass}" aria-label="Ouvrir le menu" aria-haspopup="dialog" title="Menu" {disabled} onclick={() => onmenu?.()}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14" /></svg>
   </button>
 {/snippet}
@@ -320,7 +397,7 @@
 {#snippet autoButton(solo: boolean)}
   <button type="button" class="mode-btn auto-btn" class:solo class:auto-on={isAuto}
     aria-pressed={onautoclick ? undefined : isAuto} aria-haspopup={onautoclick ? 'dialog' : undefined}
-    aria-label={onautoclick ? `Ouvrir le jeu automatique${isAuto ? ' (activé)' : ''}` : 'Jeu automatique'}
+    aria-label={autoAriaLabel ?? (onautoclick ? `Ouvrir le jeu automatique${isAuto ? ' (activé)' : ''}` : 'Jeu automatique')}
     title={isAuto ? 'Jeu automatique activé' : 'Jeu automatique'} {disabled} onclick={autoClick}>
     <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" /></svg>
   </button>
@@ -331,6 +408,60 @@
     title={isTurbo ? 'Turbo activé : animations accélérées' : 'Turbo : accélérer les animations'} disabled={turboDisabled} onclick={turboClick}>
     <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" /></svg>
   </button>
+{/snippet}
+
+{#snippet portraitTab(tab: PortraitTab, place: 'p-left' | 'p-auto' | 'p-turbo')}
+  {#if tab === 'auto'}
+    <button type="button" class="p-tab {place} auto-btn" class:auto-on={isAuto}
+      aria-pressed={onautoclick ? undefined : isAuto} aria-haspopup={onautoclick ? 'dialog' : undefined}
+      aria-label={autoAriaLabel ?? (onautoclick ? `Ouvrir le jeu automatique${isAuto ? ' (activé)' : ''}` : 'Jeu automatique')}
+      title={isAuto ? 'Jeu automatique activé' : 'Jeu automatique'} {disabled} onclick={autoClick}>
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" /></svg>
+    </button>
+  {:else if tab === 'turbo'}
+    <button type="button" class="p-tab {place} turbo-btn" class:turbo-on={isTurbo} aria-pressed={isTurbo} aria-label="Turbo"
+      title={isTurbo ? 'Turbo activé : animations accélérées' : 'Turbo : accélérer les animations'} disabled={turboDisabled} onclick={turboClick}>
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" /></svg>
+    </button>
+  {:else if tab === 'sound'}
+    <!-- SON : même bascule que dans le menu ≡ (volume principal partagé). -->
+    <button type="button" class="p-tab {place} sound-btn" aria-pressed={sound.on}
+      aria-label={sound.on ? 'Son activé : couper le son' : 'Son coupé : remettre le son'}
+      title={sound.on ? 'Couper le son' : 'Remettre le son'} {disabled} onclick={() => sound.toggle()}>
+      {#if sound.on}
+        <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="solid" d="M11 5 6.5 9H3v6h3.5L11 19V5Z" /><path d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18.5 6.5a7.5 7.5 0 0 1 0 11" /></svg>
+      {:else}
+        <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path class="solid" d="M11 5 6.5 9H3v6h3.5L11 19V5Z" /><path d="m16 10 5 4M21 10l-5 4" /></svg>
+      {/if}
+    </button>
+  {:else if tab === 'history'}
+    {@render historyControl(`p-tab ${place}`)}
+  {/if}
+{/snippet}
+
+{#snippet historyControl(buttonClass: string)}
+  <!-- HISTORIQUE : les 7 dernières manches (ex. multiplicateurs de crash), dans une liste qui s'ouvre au-dessus. -->
+  <div class="p-history" bind:this={historyBox}>
+    <button type="button" class="{buttonClass} history-btn" aria-haspopup="menu" aria-expanded={historyOpen}
+      aria-label="Historique : {lastRounds.length} dernière{lastRounds.length > 1 ? 's' : ''} manche{lastRounds.length > 1 ? 's' : ''}"
+      title="Historique des manches" {disabled} onclick={historyClick}>
+      <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1M3.5 4.5V9h4.5M12 7.5V12l3 2" /></svg>
+    </button>
+    {#if historyOpen}
+      <!-- Une manche par ligne, de la plus récente à la plus ancienne, avec son rang écrit en toutes lettres. -->
+      <div class="p-history-list" role="group" aria-label={historyTitle}>
+        <span class="p-history-title">{historyTitle}</span>
+        <ol>
+          {#each lastRounds as round, index (index)}
+            <li data-tier={round.tier ?? 'mid'} class:latest={index === 0}>
+              <span class="p-history-rank">{index === 0 ? 'Dernière' : index === 1 ? 'Avant-dernière' : `${index + 1}ᵉ avant`}</span>
+              <span class="p-history-value">{round.label}</span>
+            </li>
+          {/each}
+        </ol>
+      </div>
+    {/if}
+  </div>
 {/snippet}
 
 {#snippet continueButton()}
@@ -376,27 +507,21 @@
        côté SOLDE, AUTO et TURBO côte à côte côté MISE. La difficulté et AUTO épousent le rond de JOUER. -->
   <section class="dock dock-portrait" data-mode={liveMode ?? undefined} aria-label={liveMode ? 'Commandes de la manche' : 'Commandes du jeu'}
     style:--play-cy={pg.playCy} style:--cards-top={pg.cardsTop} style:--bar-h={pg.H} style:--card-pad={pg.cardPad} style:--step-pad={pg.stepPad}
-    style:--tab-cy={pg.tabCy} style:--inner={pg.inner} style:--mid-arc={pg.midArc} style:--turbo-w={pg.turboW}>
+    style:--tab-cy={pg.tabCy} style:--inner={pg.inner} style:--mid-arc={pg.midArc} style:--turbo-w={pg.turboW}
+    style:--tab-left={pg.tabLeft} style:--tab-gap={pg.gap}>
+    {#if !liveMode}
     <div class="p-tabs">
       {@render menuButton()}
-      {#if !liveMode}
-        {#if showDifficulty}<div class="p-difficulty">{@render difficultyControl(true)}</div>{/if}
-        {#if showAuto}
-          <button type="button" class="p-tab p-auto" class:auto-on={isAuto}
-            aria-pressed={onautoclick ? undefined : isAuto} aria-haspopup={onautoclick ? 'dialog' : undefined}
-            aria-label={onautoclick ? `Ouvrir le jeu automatique${isAuto ? ' (activé)' : ''}` : 'Jeu automatique'}
-            title={isAuto ? 'Jeu automatique activé' : 'Jeu automatique'} {disabled} onclick={autoClick}>
-            <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" /></svg>
-          </button>
-        {/if}
-        {#if showTurbo}
-          <button type="button" class="p-tab p-turbo turbo-btn" class:turbo-on={isTurbo} aria-pressed={isTurbo} aria-label="Turbo"
-            title={isTurbo ? 'Turbo activé : animations accélérées' : 'Turbo : accélérer les animations'} disabled={turboDisabled} onclick={turboClick}>
-            <svg class="mode-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" /></svg>
-          </button>
-        {/if}
+      <!-- Trois places autour de ☰ : difficulté (ou autre) à gauche, puis les deux de droite. -->
+      {#if portraitTabs[0] === 'difficulty'}
+        <div class="p-difficulty">{@render difficultyControl(true)}</div>
+      {:else if portraitTabs[0]}
+        {@render portraitTab(portraitTabs[0], 'p-left')}
       {/if}
+      {#if portraitTabs[1]}{@render portraitTab(portraitTabs[1], 'p-auto')}{/if}
+      {#if portraitTabs[2]}{@render portraitTab(portraitTabs[2], 'p-turbo')}{/if}
     </div>
+    {/if}
     <div class="p-bar">
       <svg class="p-frame" viewBox="-2 {pg.frameTop} {PB.barW + 4} {pg.frameH}" preserveAspectRatio="none" aria-hidden="true"
         style:top="calc({pg.frameTop} * var(--p))" style:height="calc({pg.frameH} * var(--p))">
@@ -409,7 +534,8 @@
         <path d={pg.path} fill="none" stroke="#4a3b75" stroke-width="1.5" vector-effect="non-scaling-stroke" />
       </svg>
       {#if liveMode}
-        <!-- En jeu : ENCAISSER doré occupe tout l'intérieur de la barre (creusé autour de JOUER en révélation). -->
+        <!-- En jeu : ☰ et ENCAISSER (doré, creusé autour de JOUER en révélation) partagent la même barre, à la même hauteur. -->
+        {@render menuButton('p-live-menu')}
         <button type="button" class="cashout-btn-hero p-hero" class:around-play={hasCircle} disabled={disabled || !canCashout}
           aria-label="Encaisser {formatMoney(currentWinAmount)} {currency}" onclick={cashout}>
           <span class="hero-label">Encaisser</span>
@@ -420,18 +546,13 @@
         <span class="card-label">Solde · {currency}</span>
         <span class="card-value" aria-live="polite">{formatMoney(balance)}</span>
       </div>
-      <div class="glass-card p-card p-bet" class:bet-locked={locked}>
-        <button type="button" class="stepper-btn minus" aria-label="Diminuer la mise" disabled={!canDecrease} onclick={() => changeBet(-1)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
-        </button>
+      <div class="glass-card p-card p-bet" class:bet-locked={locked} style:--bet-scale={betScale}>
         {#if onbetclick}
           <button type="button" class="bet-display bet-open" aria-label="Modifier le montant de la mise" aria-haspopup="dialog" disabled={locked} onclick={onbetclick}>{@render betValue()}</button>
         {:else}
           <div class="bet-display" aria-live="polite">{@render betValue()}</div>
         {/if}
-        <button type="button" class="stepper-btn plus" aria-label="Augmenter la mise" disabled={!canIncrease} onclick={() => changeBet(1)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
-        </button>
+        {@render betArrows()}
       </div>
       {/if}
       {#if !liveMode}{@render playButton()}{:else if liveMode === 'reveal'}{@render continueButton()}{/if}
@@ -452,29 +573,25 @@
     <!-- Module droit : jeu -->
     <div class="dock-pod action-pod">
       <span class="pod-frame" aria-hidden="true"></span>
-      {#if showAuto || showTurbo || showDifficulty}
-        <!-- Difficulté sur toute la largeur en haut ; AUTO et TURBO côte à côte en dessous. -->
+      {#if showAuto || showTurbo || showDifficulty || showHistory}
+        <!-- Difficulté (ou HISTORIQUE) sur toute la largeur en haut ; AUTO et TURBO en dessous, de la même forme. -->
         <div class="options-stack" class:compact={showDifficulty}>
           {#if showDifficulty}
             {@render difficultyControl(true)}
           {/if}
+          {#if showHistory}{@render historyControl('mode-btn solo')}{/if}
           {#if showAuto}{@render autoButton(!showTurbo)}{/if}
           {#if showTurbo}{@render turboButton(!showAuto)}{/if}
         </div>
       {/if}
 
-      <div class="glass-card bet-card" class:bet-locked={locked}>
-        <button type="button" class="stepper-btn minus" aria-label="Diminuer la mise" disabled={!canDecrease} onclick={() => changeBet(-1)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
-        </button>
+      <div class="glass-card bet-card" class:bet-locked={locked} style:--bet-scale={betScale}>
         {#if onbetclick}
           <button type="button" class="bet-display bet-open" aria-label="Modifier le montant de la mise" aria-haspopup="dialog" disabled={locked} onclick={onbetclick}>{@render betValue()}</button>
         {:else}
           <div class="bet-display" aria-live="polite">{@render betValue()}</div>
         {/if}
-        <button type="button" class="stepper-btn plus" aria-label="Augmenter la mise" disabled={!canIncrease} onclick={() => changeBet(1)}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
-        </button>
+        {@render betArrows()}
       </div>
 
       {@render playButton()}
@@ -667,7 +784,8 @@
   .card-value {
     color: #fff;
     font-family: system-ui, -apple-system, sans-serif;
-    font-size: calc(24 * var(--u));
+    /* --bet-scale (1 par défaut) rétrécit un montant très long pour qu'il reste entier dans sa carte. */
+    font-size: calc(24 * var(--u) * var(--bet-scale, 1));
     font-weight: 800;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -697,29 +815,33 @@
     mask: radial-gradient(circle at var(--arc-x) 50%, transparent calc(var(--card-r) - 0.5px), #000 var(--card-r));
   }
 
-  /* ── Pile d'options : difficulté sur toute la largeur en haut, AUTO et TURBO côte à côte en bas.
-     Sans difficulté, AUTO et TURBO occupent toute la hauteur ; un bouton seul occupe toute la largeur. ── */
+  /* ── Pile d'options : difficulté, AUTO et TURBO sont des rectangles aux coins arrondis, de la même forme.
+     Avec difficulté : difficulté sur toute la largeur en haut, AUTO et TURBO côte à côte en bas.
+     Sans difficulté : AUTO puis TURBO l'un sous l'autre, sur toute la largeur ; un bouton seul (AUTO du Crash) prend
+     toute la place, comme la difficulté seule de Révélation. ── */
   .options-stack {
-    --mode-size: calc(44 * var(--u));
     position: relative;
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: var(--mode-size);
-    align-items: center;
-    gap: calc(6 * var(--u));
-  }
-  .options-stack.compact {
-    --mode-size: calc(28 * var(--u));
     width: calc(100 * var(--u));
-    grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: 1fr;
+    grid-auto-rows: minmax(0, 1fr);
     align-items: stretch;
     gap: calc(4 * var(--u));
   }
   /* Le menu se place par rapport à toute la pile, pour ne pas couvrir AUTO et TURBO. */
   .difficulty { grid-column: 1 / -1; min-height: 0; }
-  .options-stack.compact .mode-btn.solo { grid-column: 1 / -1; }
+  .options-stack .mode-btn.solo, .options-stack:not(.compact) .mode-btn { grid-column: 1 / -1; }
+  .options-stack:not(.compact) .mode-btn.solo .mode-icon { width: calc(20 * var(--u)); height: calc(20 * var(--u)); }
+  /* Rectangles aux coins arrondis (8 u) ; les coins qui touchent ceux du cadre suivent son arrondi :
+     20 u du cadre − 6 u d'écart = 14 u, comme les cartes Solde et Mise. */
+  .options-stack .pill, .options-stack .mode-btn { border-radius: calc(8 * var(--u)); }
+  .options-stack > .difficulty:first-child .pill,
+  .options-stack:not(.compact) > .p-history:first-child .mode-btn,
+  .options-stack:not(.compact) > .mode-btn:first-child { border-top-left-radius: calc(14 * var(--u)); }
+  .options-stack > .difficulty:only-child .pill,
+  .options-stack.compact > .mode-btn:nth-child(2),
+  .options-stack:not(.compact) > .p-history:last-child .mode-btn,
+  .options-stack:not(.compact) > .mode-btn:last-child { border-bottom-left-radius: calc(14 * var(--u)); }
   .pill {
     position: relative;
     display: flex;
@@ -738,12 +860,27 @@
   }
   .pill:hover:enabled { border-color: #7a6fa6; filter: brightness(1.12); }
   .pill:disabled { opacity: 0.45; cursor: not-allowed; }
-  /* AUTO et TURBO : boutons ronds, symbole seul (le nom est lu par les lecteurs d'écran et s'affiche au survol). */
-  .mode-btn { width: var(--mode-size); height: var(--mode-size); justify-self: center; align-self: center; }
-  .options-stack.compact .mode-btn { border-width: calc(2 * var(--u)); }
-  /* Activé : AUTO s'éclaire en cyan, TURBO en or avec l'éclair rempli. */
-  .auto-btn.auto-on { border-color: #0e5f6e; color: #67f5ff; box-shadow: 0 0 0 1.5px #00f2fe, inset 0 1.5px 0 rgba(255, 255, 255, 0.14), 0 0 14px rgba(0, 242, 254, 0.45); }
-  .turbo-btn.turbo-on { border-color: #6b4e0f; color: #fcd34d; box-shadow: 0 0 0 1.5px #fbbf24, inset 0 1.5px 0 rgba(255, 255, 255, 0.14), 0 0 14px rgba(251, 191, 36, 0.45); }
+  /* AUTO et TURBO : même matière et même forme que la difficulté, symbole seul (le nom est lu par les lecteurs d'écran et s'affiche au survol). */
+  .mode-btn {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    border: 1px solid #4a4466;
+    border-radius: 999px;
+    color: #fff;
+    background: linear-gradient(180deg, #221d3a 0%, #15122a 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 5px rgba(0, 0, 0, 0.45);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, transform 0.12s ease;
+  }
+  .mode-btn:hover:enabled { border-color: #7a6fa6; }
+  .options-stack .mode-icon { width: calc(14 * var(--u)); height: calc(14 * var(--u)); }
+  /* Activé : AUTO et TURBO s'éclairent en or (l'éclair de TURBO se remplit). */
+  .auto-btn.auto-on, .turbo-btn.turbo-on { border-color: #6b4e0f; color: #fcd34d; box-shadow: 0 0 0 1.5px #fbbf24, inset 0 1.5px 0 rgba(255, 255, 255, 0.14), 0 0 14px rgba(251, 191, 36, 0.45); }
   .turbo-btn.turbo-on .mode-icon { fill: currentColor; }
   .difficulty-pill { flex-direction: column; gap: calc(1 * var(--u)); line-height: 1.05; }
   .pill-caption { color: #d4cdea; font-size: max(8px, calc(9.5 * var(--u))); font-weight: 500; }
@@ -797,10 +934,12 @@
     justify-content: space-between;
     gap: calc(6 * var(--u));
     min-width: calc(186 * var(--u));
-    /* 9 u + 9 u de creux à droite, pour que le + reste à distance de l'arc. */
-    padding-inline: calc(9 * var(--u)) calc(18 * var(--u));
+    /* Les flèches sont dans le coin droit, après le creux de l'arc. */
+    padding-inline: calc(18 * var(--u)) calc(8 * var(--u));
   }
-  .bet-display { display: grid; justify-items: center; gap: calc(3 * var(--u)); min-width: calc(64 * var(--u)); }
+  /* MISE comme SOLDE : « MISE · FCFA » au-dessus, le montant en dessous, centré dans la place qui reste. */
+  .bet-display { display: grid; justify-items: center; gap: calc(4 * var(--u)); flex: 1; min-width: 0; }
+  .bet-display .card-label, .bet-display .card-value { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: clip; }
   /* Montant cliquable : ouvre la liste des mises du jeu. */
   .bet-open {
     position: relative;
@@ -820,24 +959,61 @@
   .bet-value { display: inline-block; animation: bet-tick 0.22s ease-out; }
   .currency-sub { color: #b9a8e8; font-size: max(8px, calc(9.5 * var(--u))); font-weight: 600; line-height: 1; letter-spacing: 0.8px; }
   @keyframes bet-tick { from { opacity: 0.6; transform: scale(1.14); } }
-  /* −, +, AUTO et TURBO : même cercle que le bouton menu — un anneau, un disque noir, puis le symbole blanc. */
-  .stepper-btn, .mode-btn {
+  /* Flèches de la mise : ▲ au-dessus de ▼, dans le coin droit de la carte, en un seul ruban rectangulaire.
+     Son bord droit est creusé du même demi-cercle que la carte MISE — même centre (JOUER), rayon décalé de
+     l'écart qui les sépare — pour que les deux courbes restent parallèles, comme le ☰ côté SOLDE. */
+  .bet-arrows {
+    /* Arc concentrique à JOUER : celui de la carte (--card-r), écarté du retrait droit de la carte et de son liseré. */
+    --arrow-gap: calc(8 * var(--u) + 1px);
+    --arrow-r: calc(var(--card-r) + var(--arrow-gap));
+    --arrow-arc-x: calc(100% + var(--card-inset) + var(--arrow-gap));
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    flex: none;
+    align-self: stretch;
+    gap: 0;
+    width: calc(54 * var(--u));
+    overflow: hidden;
+    /* Pas de bordure : le liseré passe en ombre interne, pour que le masque puisse creuser le bord droit. */
+    border: 0;
+    border-radius: calc(14 * var(--u));
+    box-shadow: inset 0 0 0 1.5px #5c4f88, inset 0 0 0 calc(1.5px + 1.5 * var(--u)) #3b3459, inset 0 1.5px 0 rgba(255, 255, 255, 0.12);
+    -webkit-mask: radial-gradient(circle at var(--arrow-arc-x) 50%, transparent calc(var(--arrow-r) - 0.5px), #000 var(--arrow-r)) no-repeat;
+    mask: radial-gradient(circle at var(--arrow-arc-x) 50%, transparent calc(var(--arrow-r) - 0.5px), #000 var(--arrow-r)) no-repeat;
+  }
+  /* Liseré violet qui suit l'arc, posé au-dessus des deux boutons (leur fond est opaque). */
+  .bet-arrows::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background: radial-gradient(circle at var(--arrow-arc-x) 50%, transparent calc(var(--arrow-r) - 0.5px), #5c4f88 var(--arrow-r), #5c4f88 calc(var(--arrow-r) + 1.5px), transparent calc(var(--arrow-r) + 2px));
+    pointer-events: none;
+  }
+  .stepper-btn {
     position: relative;
     z-index: 2;
     display: grid;
     flex: none;
     place-items: center;
+    width: 100%;
     min-height: 0;
-    padding: 0;
-    border: calc(2.5 * var(--u)) solid #3b3459;
-    border-radius: 50%;
+    /* Le creux mange le bord droit : les flèches se recentrent dans la partie qui reste visible. */
+    padding: 0 calc(7 * var(--u)) 0 0;
+    border: 0;
+    border-radius: 0;
     color: #fff;
-    background: radial-gradient(circle at 50% 30%, #2d2749 0%, #1a1631 58%, #100d21 100%);
-    box-shadow: 0 0 0 1.5px #5c4f88, inset 0 1.5px 0 rgba(255, 255, 255, 0.14), 0 4px 10px rgba(0, 0, 0, 0.6);
     transition: transform 0.12s ease, filter 0.2s ease, box-shadow 0.2s ease;
+    height: 100%;
   }
-  .stepper-btn { width: var(--stepper); height: var(--stepper); }
-  .stepper-btn svg, .mode-icon { width: 46%; height: 46%; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
+  /* Même dégradé qu'avant, partagé sur tout le ruban : clair en haut, sombre en bas, coupé net par le trait du milieu. */
+  .stepper-btn.up { background: linear-gradient(180deg, #342c58 0%, #211b3a 100%); box-shadow: inset 0 -1.5px 0 #15101f; }
+  .stepper-btn.down { background: linear-gradient(180deg, #211b3a 0%, #15122a 100%); }
+  .stepper-btn svg { width: calc(20 * var(--u)); height: calc(20 * var(--u)); }
+  .mode-icon { width: 46%; height: 46%; }
+  .stepper-btn svg, .mode-icon { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
   .stepper-btn:hover:enabled, .mode-btn:hover:enabled { filter: brightness(1.2); }
   .stepper-btn:active:enabled, .mode-btn:active:enabled { transform: scale(0.92); }
   .stepper-btn:disabled, .mode-btn:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -1012,9 +1188,30 @@
   }
   /* Rangée au-dessus de la barre (123 de haut) : ☰ et difficulté à gauche (côté SOLDE), AUTO et TURBO à droite (côté MISE). */
   .p-tabs { position: relative; width: calc(1004 * var(--p)); height: var(--menu); margin-bottom: calc(10 * var(--p)); }
-  .dock-portrait .menu-btn { top: 0; left: 0; border-width: calc(2.5 * var(--u)); transform: none; }
-  .dock-portrait .menu-btn:active:enabled { transform: scale(0.94); }
-  /* Difficulté, AUTO et TURBO : même matière que les boutons ronds de l'ordinateur (anneau, disque sombre, symbole blanc). */
+  /* ☰ en portrait : plus de rond, un rectangle arrondi de la largeur du 4e bouton, même matière que les trois autres. */
+  .dock-portrait .menu-btn {
+    top: 0;
+    left: 0;
+    width: calc(var(--turbo-w) * var(--p));
+    height: 100%;
+    border: 1.5px solid #5c4f88;
+    border-radius: calc(26 * var(--p));
+    box-shadow: inset 0 0 0 calc(2.5 * var(--u)) #3b3459, inset 0 calc(4 * var(--u)) 0 rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.6);
+    transform: none;
+  }
+  .dock-portrait .menu-btn svg { width: calc(56 * var(--p)); height: calc(56 * var(--p)); }
+  .dock-portrait .menu-btn:hover:enabled { filter: brightness(1.2); box-shadow: inset 0 0 0 calc(2.5 * var(--u)) #3b3459, inset 0 calc(4 * var(--u)) 0 rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.6); }
+  .dock-portrait .menu-btn:active:enabled { transform: scale(0.96); }
+  /* En jeu : ☰ rejoint ENCAISSER et JOUER dans la même barre, à sa hauteur, même matière que le ☰ hors manche. */
+  .dock-portrait .menu-btn.p-live-menu {
+    top: calc(14 * var(--p));
+    left: calc(20 * var(--p));
+    width: calc(180 * var(--p));
+    height: calc((var(--bar-h) - 28) * var(--p));
+    border-radius: calc(18 * var(--p));
+  }
+  .dock-portrait .menu-btn.p-live-menu svg { width: calc(50 * var(--p)); height: calc(50 * var(--p)); }
+  /* Les quatre places : même matière que les boutons ronds de l'ordinateur (anneau, disque sombre, symbole blanc). */
   .p-tab, .p-difficulty .difficulty-pill {
     position: absolute;
     top: 0;
@@ -1036,10 +1233,10 @@
   .p-tab:disabled { opacity: 0.35; cursor: not-allowed; }
   .p-tab .mode-icon { width: calc(56 * var(--p)); height: calc(56 * var(--p)); }
   /* Bord tourné vers JOUER : creusé sur toute la hauteur en arc de rayon 136, concentrique à JOUER, avec son liseré. */
-  .p-auto, .p-difficulty .difficulty-pill {
+  .p-auto, .p-left, .p-difficulty .difficulty-pill {
     --cy: calc(var(--tab-cy) * var(--p));
     background:
-      radial-gradient(circle at var(--cx) var(--cy), transparent calc(136 * var(--p) - 0.5px), #5c4f88 calc(136 * var(--p)), #5c4f88 calc(136 * var(--p) + 1.5px), #3b3459 calc(136 * var(--p) + 1.5px), #3b3459 calc(136 * var(--p) + 1.5px + 2.5 * var(--u)), transparent calc(136 * var(--p) + 2px + 2.5 * var(--u))),
+      radial-gradient(circle at var(--cx) var(--cy), transparent calc(136 * var(--p) - 0.5px), var(--arc-line, #5c4f88) calc(136 * var(--p)), var(--arc-line, #5c4f88) calc(136 * var(--p) + 1.5px), var(--arc-band, #3b3459) calc(136 * var(--p) + 1.5px), var(--arc-band, #3b3459) calc(136 * var(--p) + 1.5px + 2.5 * var(--u)), transparent calc(136 * var(--p) + 2px + 2.5 * var(--u))),
       radial-gradient(circle at 50% 30%, #2d2749 0%, #1a1631 58%, #100d21 100%);
     background-origin: border-box;
     -webkit-mask: radial-gradient(circle at var(--cx) var(--cy), transparent calc(136 * var(--p) - 0.5px), #000 calc(136 * var(--p)));
@@ -1049,16 +1246,72 @@
   .p-auto {
     --cx: calc(var(--inner) * -1 * var(--p));
     left: calc((502 + var(--inner)) * var(--p));
-    right: calc((var(--turbo-w) + 16) * var(--p));
+    right: calc((var(--turbo-w) + var(--tab-gap)) * var(--p));
     padding-left: calc((var(--mid-arc) - var(--inner)) * var(--p));
   }
-  .p-auto.auto-on { border-color: #00f2fe; color: #67f5ff; }
+  /* AUTO activé : or comme TURBO, liseré de l'arc compris. */
+  .p-tab.auto-on { --arc-line: #fbbf24; --arc-band: #6b4e0f; border-color: #fbbf24; color: #fcd34d; box-shadow: inset 0 0 0 calc(2.5 * var(--u)) #6b4e0f, inset 0 0 calc(14 * var(--u)) rgba(251, 191, 36, 0.3), 0 4px 10px rgba(0, 0, 0, 0.6); }
   .p-turbo { right: 0; width: calc(var(--turbo-w) * var(--p)); }
+  /* Place de gauche quand ce n'est pas la difficulté (SON du crash, par exemple) : même emprise que la liste Difficulté. */
+  .p-left {
+    --cx: calc((502 - var(--tab-left)) * var(--p));
+    left: calc(var(--tab-left) * var(--p));
+    width: calc((502 - var(--inner) - var(--tab-left)) * var(--p));
+    padding-right: calc((var(--mid-arc) - var(--inner)) * var(--p));
+  }
+  .p-tab .mode-icon .solid { fill: currentColor; stroke-linejoin: round; }
+  /* HISTORIQUE : liste des dernières manches, ouverte au-dessus du bouton.
+     Tout est dessiné dans l'unité --hu, réglée par format (portrait : --p ; ordinateur : 0,3 u,
+     ce qui donne la largeur de la pile d'options, son arrondi de 8 u et la taille de ses textes). */
+  .p-history { display: contents; }
+  .p-history-list {
+    /* Plancher de 0,34 px par unité : sur les petits écrans la liste reste lisible. */
+    --hu: max(0.34px, var(--p));
+    position: absolute;
+    z-index: 30;
+    display: grid;
+    gap: calc(12 * var(--hu));
+    min-width: calc(460 * var(--hu));
+    padding: calc(18 * var(--hu));
+    border: 1.5px solid #5c4f88;
+    border-radius: calc(26 * var(--hu));
+    background: linear-gradient(180deg, #221d3b, #15112a);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.7);
+    animation: menu-in-up 0.14s ease;
+  }
+  /* Ordinateur, tablette et paysage : au-dessus de la pile, aligné sur son bord droit. */
+  .options-stack .p-history-list { --hu: max(0.34px, calc(0.45 * var(--u))); right: 0; bottom: calc(100% + 6 * var(--u)); }
+  .p-history-title { color: #a79ccd; font-size: calc(30 * var(--hu)); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .p-history-list ol { display: grid; gap: calc(6 * var(--hu)); margin: 0; padding: 0; list-style: none; }
+  /* Une ligne par manche : son rang à gauche, son résultat à droite. */
+  .p-history-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(24 * var(--hu));
+    padding: calc(9 * var(--hu)) calc(14 * var(--hu));
+    border: 1px solid #ffffff14;
+    border-radius: calc(14 * var(--hu));
+    background: #1b1630;
+    white-space: nowrap;
+  }
+  .p-history-rank { color: #9c93bd; font-size: calc(30 * var(--hu)); font-weight: 600; }
+  .p-history-value { color: #cfc8ea; font-size: calc(40 * var(--hu)); font-weight: 800; font-variant-numeric: tabular-nums; }
+  /* La manche la plus récente est mise en avant. */
+  .p-history-list li.latest { border-color: #ffffff38; background: #241d40; }
+  .p-history-list li.latest .p-history-rank { color: #e4defa; }
+  /* En portrait, la liste part du bord droit de la rangée. */
+  .dock-portrait .p-history-list { right: 0; bottom: calc(100% + 10 * var(--p)); }
+  .p-history-list [data-tier='low'] .p-history-value { color: #8fb4ff; }
+  .p-history-list [data-tier='mid'] .p-history-value { color: #c4b5fd; }
+  .p-history-list [data-tier='high'] .p-history-value { color: #fbbf24; }
+  .p-history-list [data-tier='win'] .p-history-value { color: #34d399; }
+  .p-history-list [data-tier='loss'] .p-history-value { color: #fb7185; }
   /* Difficulté : de ☰ jusqu'à l'arc. */
-  .p-difficulty { position: absolute; top: 0; left: calc((123 + 16) * var(--p)); width: calc((502 - var(--inner) - 139) * var(--p)); height: 100%; }
+  .p-difficulty { position: absolute; top: 0; left: calc(var(--tab-left) * var(--p)); width: calc((502 - var(--inner) - var(--tab-left)) * var(--p)); height: 100%; }
   .p-difficulty .difficulty { position: relative; height: 100%; }
   .p-difficulty .difficulty-pill {
-    --cx: calc(363 * var(--p));
+    --cx: calc((502 - var(--tab-left)) * var(--p));
     left: 0;
     width: 100%;
     padding: 0 calc((var(--mid-arc) - var(--inner)) * var(--p)) 0 calc(12 * var(--p));
@@ -1070,6 +1323,9 @@
 
   /* Barre : rectangle arrondi + collier autour de JOUER, dessinés en SVG. */
   .p-bar { position: relative; width: calc(1004 * var(--p)); height: calc(var(--bar-h) * var(--p)); }
+  /* En révélation, la pierre verte dépasse de 120 (son demi-diamètre) au-dessus de la barre : sans la rangée du
+     dessus pour l'accueillir, elle rognait la zone de jeu juste au-dessus. On redonne cet espace, et un peu plus. */
+  .dock-portrait[data-mode='reveal'] .p-bar { margin-top: calc(132 * var(--p)); }
   .p-frame { position: absolute; left: calc(-2 * var(--p)); width: calc(1008 * var(--p)); overflow: visible; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.7)); pointer-events: none; }
 
   /* SOLDE et MISE : 476 × 160 chacune, côté tourné vers JOUER creusé en arc (rayon 136). */
@@ -1096,33 +1352,50 @@
     gap: calc(8 * var(--p));
     padding: 0 calc(var(--card-pad) * var(--p)) 0 calc(16 * var(--p));
   }
-  /* MISE : − à gauche (juste après le creux), montant, + à droite, comme sur ordinateur. */
+  /* MISE comme SOLDE : « MISE · FCFA » au-dessus, le montant en dessous, les flèches ▲ ▼ dans le coin droit. */
   .p-bet {
     --cx: calc(-6 * var(--p));
+    --stepper: calc(76 * var(--p));
     left: calc(508 * var(--p));
     display: flex;
     align-items: center;
-    gap: calc(4 * var(--p));
-    padding: 0 calc(10 * var(--p)) 0 calc(var(--step-pad) * var(--p));
+    gap: calc(8 * var(--p));
+    padding: 0 calc(14 * var(--p)) 0 calc(var(--card-pad) * var(--p));
   }
-  /* Le montant prend toute la place entre − et + : « 1 000 » tient même sur un écran de 320 px. */
-  .p-bet .bet-display { flex: 1; min-width: 0; padding-inline: 0; }
-  .p-bet .card-value { font-size: max(12px, calc(44 * var(--p))); }
+  .p-bet .bet-display { flex: 1; min-width: 0; gap: calc(8 * var(--p)); padding-inline: 0; }
+  .p-bet .card-value { font-size: max(9px, calc(44 * var(--p) * var(--bet-scale, 1))); }
+  /* Mobile : inchangé, deux boutons distincts (pas le ruban du reste des formats). */
+  .dock-portrait .bet-arrows {
+    gap: calc(7 * var(--p)); width: calc(92 * var(--p)); padding-block: calc(16 * var(--p));
+    overflow: visible; border: 0; border-radius: 0; box-shadow: none;
+    -webkit-mask: none; mask: none;
+  }
+  .dock-portrait .bet-arrows::after { content: none; }
+  .dock-portrait .stepper-btn { padding: 0; }
+  .dock-portrait .stepper-btn, .dock-portrait .stepper-btn.up, .dock-portrait .stepper-btn.down {
+    border: 1.5px solid #5c4f88;
+    border-radius: calc(14 * var(--p));
+    background: linear-gradient(180deg, #2d2749 0%, #15122a 100%);
+    box-shadow: inset 0 0 0 calc(2.5 * var(--p)) #3b3459, inset 0 1.5px 0 rgba(255, 255, 255, 0.12), 0 3px 8px rgba(0, 0, 0, 0.55);
+  }
+  .dock-portrait .stepper-btn svg { width: calc(46 * var(--p)); height: calc(46 * var(--p)); }
   .p-bet.bet-locked .card-label { color: #fbbf24; }
 
   /* JOUER : centré sur le bord haut de la barre, au milieu de la rangée du dessus. */
   .dock-portrait .master-play-btn { top: calc(var(--play-cy) * var(--p)); right: auto; left: 50%; transform: translate(-50%, -50%); }
   .dock-portrait .master-play-btn:active:enabled { transform: translate(-50%, -50%) scale(0.95); }
+  /* En jeu : JOUER (suivant) se recentre sur l'espace qui reste à droite du ☰, pour rester au milieu d'ENCAISSER. */
+  .dock-portrait[data-mode] .master-play-btn { left: calc(598 * var(--p)); }
 
   /* En jeu (crash, révélation) : ENCAISSER remplit l'intérieur de la barre, même hauteur qu'avant la mise.
      En révélation il est creusé autour de JOUER (rayon 136) et ses deux textes encadrent JOUER. */
   .dock-portrait .p-hero {
-    --cx: calc(482 * var(--p));
+    --cx: calc(386 * var(--p));
     --cy: calc((var(--play-cy) - 14) * var(--p));
     position: absolute;
     top: calc(14 * var(--p));
-    left: calc(20 * var(--p));
-    width: calc(964 * var(--p));
+    left: calc(212 * var(--p));
+    width: calc(772 * var(--p));
     min-width: 0;
     height: calc((var(--bar-h) - 28) * var(--p));
     padding: 0 calc(24 * var(--p));
@@ -1132,8 +1405,10 @@
   }
   .dock-portrait .p-hero .hero-label { font-size: max(11px, calc(32 * var(--p))); }
   .dock-portrait .p-hero .hero-amount { font-size: max(16px, calc(60 * var(--p))); }
+  /* ☰ grignote un peu de place : ENCAISSER rétrécit davantage pour rester lisible sans déborder. */
+  .dock-portrait .p-hero.around-play .hero-label { font-size: max(8px, calc(26 * var(--p))); letter-spacing: 1px; }
   .dock-portrait .p-hero.around-play {
-    grid-template-columns: minmax(0, 1fr) calc(290 * var(--p)) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) calc(264 * var(--p)) minmax(0, 1fr);
     place-content: stretch;
     align-items: center;
     background:

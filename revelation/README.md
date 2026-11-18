@@ -19,13 +19,14 @@ Ouvrir **http://localhost:3052**. Si nécessaire, installer d'abord avec `npm in
 
 1. Choisir une mise avec `−`, `+` ou en touchant le montant.
 2. Choisir la difficulté : Calme (1 piège), Normal (3 pièges) ou Expert (5 pièges), dans la liste déroulante du dock, dans tous les formats (au-dessus du SOLDE en portrait).
+   En portrait, la rangée du haut garde quatre boutons : ☰, la difficulté, **SON** (même bascule que dans le menu ≡) et **TURBO**, qui accélère la révélation des cases. TURBO est aussi dans les autres formats, sous la difficulté.
 3. Appuyer sur **Jouer**.
 4. Choisir une case. Un trésor augmente le gain ; un piège termine la manche.
 5. Après un trésor, appuyer sur **Encaisser** pour conserver le résultat affiché.
 
 La mise et la difficulté sont bloquées pendant la partie. Le gain encaissé reste identique si l'on prépare ensuite une autre mise.
 
-Le chiffre de mise et le contenu du bouton restent animés. Pendant la partie, le bouton doré Encaisser pulse ; à côté, la pierre verte de JOUER montre une flèche « suivant » (et non plus le mot JOUER) et révèle une case au hasard ; en portrait, Encaisser remplit la barre autour d'elle. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
+Le chiffre de mise et le contenu du bouton restent animés. Pendant la partie, le bouton doré Encaisser pulse ; à côté, la pierre verte de JOUER montre une flèche « suivant » (et non plus le mot JOUER) et révèle une case au hasard ; en portrait, Encaisser remplit la barre autour d'elle, et le ☰ descend à côté, à la même hauteur, plutôt que de rester seul au-dessus. Les réglages « mouvement réduit » du navigateur sont respectés. Le test navigateur enregistre un aperçu dans `reports/animations.webm`.
 
 La grille est fixe pour présenter le parcours. La case 4 contient un piège dans les trois niveaux ; les cases 1 et 2 sont des trésors. Les multiplicateurs sont des valeurs de présentation, sans calcul de probabilités de production. Il n'y a ni hasard, ni paiement, ni compte réel. Le solde reste fictif. Aucun appel au serveur de jeux.
 

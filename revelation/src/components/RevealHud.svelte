@@ -7,9 +7,11 @@
   import Sheet from './Sheet.svelte';
   import CasinoControlDock from '../../../src/lib/CasinoControlDock.svelte';
 
-  let { amount, difficulty, phase, payout, revealed, layout, onamount, ondifficulty, onprimary, onmenu, oncontinue }: {
+  let { amount, difficulty, phase, payout, revealed, layout, turbo = $bindable(false), onamount, ondifficulty, onprimary, onmenu, oncontinue }: {
     amount: number; difficulty: Difficulty; phase: Scenario; payout: number;
     revealed: number; layout: LayoutType;
+    /** Turbo : accélère la révélation des cases. */
+    turbo?: boolean;
     onamount: (value: number) => void; ondifficulty: (value: Difficulty) => void; onprimary: () => void; oncontinue?: () => void;
     onmenu: () => void;
   } = $props();
@@ -29,7 +31,7 @@
 
 <!-- Tous les formats, portrait compris : dock commun (disposition de poulet-banane en portrait). -->
 <CasinoControlDock portrait={layout === 'portrait'} floating={false} balance={config.balance} bet={amount} onchangebet={chooseAmount}
-  betOptions={config.betAmountOptions} onbetclick={() => betSheet.open()} showAuto={false} showTurbo={false}
+  betOptions={config.betAmountOptions} onbetclick={() => betSheet.open()} showAuto={false} bind:isTurbo={turbo}
   difficulties={difficultyLabels} difficulty={difficulties[difficulty].label} {difficultyHints} onchangedifficulty={chooseDifficultyLabel}
   gameType="reveal" currentWinAmount={payout} canCashout={revealed > 0} oncashout={onprimary} {oncontinue}
   isPlaying={locked} playLabel={locked ? 'Encaisser' : 'Jouer'} playDetail={locked && revealed > 0 ? `${formatDecimal(payout)} FCFA` : undefined}

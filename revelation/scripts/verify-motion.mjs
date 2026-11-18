@@ -15,7 +15,7 @@ export async function verifyMotion(browser, url) {
     await page.locator('.dock .bet-value').filter({hasText:'20'}).waitFor();
     // Le montant de la mise rebondit à chaque changement (dock portrait).
     const ticking = await page.evaluate(async () => {
-      document.querySelector('.dock .stepper-btn.plus').click();
+      document.querySelector('.dock .stepper-btn.up').click();
       await new Promise(resolve => requestAnimationFrame(resolve));
       return document.querySelector('.dock .bet-value').getAnimations().some(animation => animation.playState === 'running');
     });

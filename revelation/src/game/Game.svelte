@@ -8,15 +8,14 @@
   import config, { difficulties, type Difficulty } from '../game.config';
   import RevealHud from '../components/RevealHud.svelte';
   import Icon from '../components/Icon.svelte';
-  import Sheet from '../components/Sheet.svelte';
+  import GameMenu from '../../../src/lib/GameMenu.svelte';
   import { formatDecimal } from './format';
   import { detectLayout, type LayoutType } from './layouts';
   import { scenarios, type Scenario } from './scenarios';
 
   let { layout = 'auto', scenario = 'ready' }: { layout?: LayoutType | 'auto'; scenario?: Scenario } = $props();
   let host: HTMLElement;
-  let menu: ReturnType<typeof Sheet>;
-  let sound = $state(true);
+  let menu: ReturnType<typeof GameMenu>;
   let detected = $state<LayoutType>('desktop');
   let currentScenario = $state<Scenario>('ready');
   let amount = $state(config.bet);
@@ -25,6 +24,8 @@
   let roundBet = $state(config.bet);
   let revealed = $state<number[]>([]);
   let settledPayout = $state(0);
+  // Turbo : révélation des cases accélérée.
+  let turbo = $state(false);
   const activeLayout = $derived(layout === 'auto' ? detected : layout);
   const current = $derived(scenarios[currentScenario]);
   const round = $derived(difficulties[currentScenario === 'ready' ? difficulty : roundDifficulty]);
@@ -84,7 +85,7 @@
   });
 </script>
 
-<main class="game immersive revelation" data-layout={activeLayout} data-scenario={currentScenario} bind:this={host}>
+<main class="game immersive revelation" data-layout={activeLayout} data-scenario={currentScenario} data-turbo={turbo} bind:this={host}>
   {#if activeLayout === 'portrait'}<BananeBackdrop />{:else}<SceneBackdrop family="revelation" />{/if}
   <header class="topbar">
     <div class="brand" role="img" aria-label="Logo du jeu Révélation">
@@ -116,23 +117,47 @@
       </div>
       <div class="board-footer"><span><Icon name="gem" size={16} />{safeCount} / {totalSafe} trésors</span><span><Icon name="shield" size={16} />{traps.length} piège{traps.length > 1 ? 's' : ''}</span><span class="multiplier" aria-label="Multiplicateur">×{formatDecimal(multiplier)}</span></div>
     </section>
-    <RevealHud {amount} {difficulty} phase={currentScenario} {payout} revealed={safeCount} layout={activeLayout} onamount={(value) => amount = value} ondifficulty={(value) => difficulty = value} onprimary={primaryAction} oncontinue={revealRandom} onmenu={() => menu.open()} />
+    <RevealHud {amount} {difficulty} phase={currentScenario} {payout} revealed={safeCount} layout={activeLayout} bind:turbo onamount={(value) => amount = value} ondifficulty={(value) => difficulty = value} onprimary={primaryAction} oncontinue={revealRandom} onmenu={() => menu.open()} />
   </div>
-  <Sheet bind:this={menu} title="Menu du jeu" closeLabel="Fermer le menu" layout={activeLayout}>
-    <h3 class="section-title">Réglages</h3>
-    <label class="row setting">
-      <span class="setting-icon" class:off={!sound} aria-hidden="true"><Icon name={sound ? 'sound' : 'mute'} /></span>
-      <span class="setting-text"><strong>Son</strong><small>{sound ? 'Effets sonores et musique activés' : 'Son coupé'}</small></span>
-      <input type="checkbox" aria-label="Son" bind:checked={sound} />
-    </label>
-    <h3 class="section-title">Comment jouer</h3>
-    <ol class="how">
-      <li><strong>Préparez la partie</strong>Choisissez une mise et une difficulté, puis commencez.</li>
-      <li><strong>Révélez une case</strong>Un trésor augmente le gain ; un piège termine la manche.</li>
-      <li><strong>Encaissez quand vous voulez</strong>Après un trésor, vous pouvez conserver le montant affiché.</li>
-    </ol>
-    <p class="note demo"><Icon name="info" size={18} />Maquette interactive : montants fictifs, aucun paiement. La grille est fixe pour la démonstration et le son est illustratif.</p>
-  </Sheet>
+  <!-- Menu du jeu (≡) : même menu qu'africa-tower — SON, PARAMÈTRES, INFO et TABLEAU DES GAINS. -->
+  <GameMenu bind:this={menu}>
+    {#snippet rules()}
+      <section>
+        <h2>Le principe</h2>
+        <p>Choisissez une difficulté et une mise, puis appuyez sur JOUER. Révélez les cases une à une&nbsp;: chaque trésor fait monter le multiplicateur.</p>
+        <p>La flèche verte révèle une case au hasard. Un piège fait perdre la mise.</p>
+      </section>
+      <section>
+        <h2>Comment gagner</h2>
+        <p>Dès le premier trésor, appuyez sur ENCAISSER pour sécuriser votre gain actuel.</p>
+      </section>
+      <section>
+        <h2>Les difficultés</h2>
+        <p>Plus il y a de pièges, plus les multiplicateurs grimpent vite.</p>
+        <ul>
+          {#each Object.values(difficulties) as level (level.label)}
+            <li><strong>{level.label}</strong> — {level.traps.length} piège{level.traps.length > 1 ? 's' : ''}, gain maximum ×{formatDecimal(level.multipliers.at(-1) ?? 1)}</li>
+          {/each}
+        </ul>
+      </section>
+      <section>
+        <h2>Le gain</h2>
+        <p>Le gain est la mise multipliée par le multiplicateur atteint au moment où vous encaissez.</p>
+      </section>
+    {/snippet}
+    {#snippet payTable()}
+      {@const steps = round.multipliers.slice(1)}
+      {@const reached = currentScenario === 'ready' ? 0 : safeCount}
+      <p class="pt-mode">Difficulté&nbsp;: <strong>{round.label}</strong></p>
+      <p class="pt-intro">Chaque trésor révélé fait passer au palier suivant&nbsp;: vert = sécurisé, doré = prochain trésor.</p>
+      <div class="pt-ladder">
+        {#each steps as factor, index (index)}
+          {#if index > 0}<div class="pt-chevron" class:achieved={index - 1 < reached}><svg viewBox="0 0 10 16" aria-hidden="true"><path d="M0 0 L10 8 L0 16 Z" /></svg></div>{/if}
+          <div class="pt-step" class:pt-achieved={index < reached} class:pt-next={index === reached}><span class="pt-index">Trésor {index + 1}</span><span class="pt-mult">×{formatDecimal(factor)}</span></div>
+        {/each}
+      </div>
+    {/snippet}
+  </GameMenu>
 </main>
 
 <style>
@@ -170,20 +195,6 @@
   .balance-value strong { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .balance-value small { color: var(--muted); font-size: 12px; font-weight: 600; }
 
-  /* Fenêtre du menu : sections, ligne de réglage avec icône, étapes numérotées. */
-  .game .section-title { margin: 16px 0 4px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .game .row.setting { justify-content: flex-start; gap: 14px; }
-  .setting-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; color: var(--accent); background: var(--accent-soft); transition: color 0.2s, background-color 0.2s; }
-  .setting-icon.off { color: var(--muted); background: var(--surface-3); }
-  .setting-text { flex: 1; }
-  .game .how { display: grid; gap: 14px; margin: 8px 0 0; padding: 0; list-style: none; counter-reset: step; }
-  .game .how li { counter-increment: step; display: grid; grid-template-columns: 28px 1fr; gap: 2px 12px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
-  .how li::before { content: counter(step); grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); font-size: 14px; font-weight: 700; }
-  .how strong { color: var(--text); font-size: 15px; font-weight: 600; }
-  .game .note.demo { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
-  .demo :global(svg) { flex: none; margin-top: 1px; color: var(--accent); }
-
-
   .content { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(220px,1fr) auto; gap: 12px; }
   .playfield { position: relative; min-width: 0; min-height: 0; overflow: hidden; container-type: size; display: grid; grid-template-rows: auto minmax(0,1fr) auto; justify-items: center; gap: 16px; padding: 24px; border: 1px solid var(--line); border-radius: 20px; background: radial-gradient(70% 85% at 50% 50%,#4c287644,transparent 75%),var(--surface); }
   .board-heading { width: min(100%,440px); text-align: center; }
@@ -218,5 +229,7 @@
   .game[data-layout='landscape'] .cell :global(svg) { width: 24px; height: 24px; }
   .game[data-layout='landscape'] .cell-number { bottom: 3px; font-size: 10px; }
   .game[data-layout='landscape'] .board-footer { font-size: 12px; gap: 10px; }
+  /* TURBO : les cases se retournent presque sans transition. */
+  .game[data-turbo='true'] .cell { transition-duration: .05s, .06s, .06s; }
   @media (prefers-reduced-motion: reduce) { .cell { transition: none; } }
 </style>

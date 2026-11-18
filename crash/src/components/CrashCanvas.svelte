@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import type { Scenario } from '../game/scenarios';
 
-  let { scenario = 'betting' }: { scenario?: Scenario } = $props();
+  /** progress : part de la courbe tracée (0 à 1), pour faire monter la courbe pendant une manche du jeu automatique. */
+  let { scenario = 'betting', progress = 1 }: { scenario?: Scenario; progress?: number } = $props();
 
   // Mêmes teintes que l'écran : violet en vol, vert après encaissement, rouge au crash.
   const colors: Record<Scenario, number> = { betting: 0xa78bfa, queued: 0xfbbf24, running: 0xa78bfa, cashedOut: 0x34d399, ended: 0xfb7185 };
@@ -64,12 +65,28 @@
           curve.circle(startX, startY, 14).fill({ color, alpha: 0.18 });
           curve.circle(startX, startY, 5).fill(color);
         } else {
-          const trace = (graphics: typeof curve) => graphics.moveTo(startX, startY).bezierCurveTo(width * 0.45, startY, width * 0.7, height * 0.66, endX, endY);
-          trace(area).lineTo(endX, startY).lineTo(startX, startY).closePath().fill({ color, alpha: 0.12 });
-          trace(curve).stroke({ color, width: 12, alpha: 0.12, cap: 'round' });
-          trace(curve).stroke({ color, width: 4, cap: 'round' });
-          curve.circle(endX, endY, 16).fill({ color, alpha: 0.22 });
-          curve.circle(endX, endY, 6).fill(0xffffff);
+          // Même courbe de Bézier, tracée jusqu'à `progress` (points échantillonnés).
+          const end = Math.min(1, Math.max(0.02, progress));
+          const c1x = width * 0.45, c1y = startY, c2x = width * 0.7, c2y = height * 0.66;
+          const at = (t: number) => {
+            const u = 1 - t;
+            return [
+              u * u * u * startX + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * endX,
+              u * u * u * startY + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * endY,
+            ];
+          };
+          const points = Array.from({ length: 41 }, (_, index) => at((end * index) / 40));
+          const [tipX, tipY] = points[points.length - 1];
+          const trace = (graphics: typeof curve) => {
+            graphics.moveTo(startX, startY);
+            for (const [x, y] of points.slice(1)) graphics.lineTo(x, y);
+            return graphics;
+          };
+          trace(area).lineTo(tipX, startY).lineTo(startX, startY).closePath().fill({ color, alpha: 0.12 });
+          trace(curve).stroke({ color, width: 12, alpha: 0.12, cap: 'round', join: 'round' });
+          trace(curve).stroke({ color, width: 4, cap: 'round', join: 'round' });
+          curve.circle(tipX, tipY, 16).fill({ color, alpha: 0.22 });
+          curve.circle(tipX, tipY, 6).fill(0xffffff);
         }
         app.render();
       };

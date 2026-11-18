@@ -35,14 +35,5 @@
 .game.immersive .history { left:0; right:0; }
 .game.immersive .crash-scene { position:absolute; inset:0; pointer-events:none; }
 
-/* Les fenêtres ont également une seule surface, sans sous-panneaux encadrés. */
-.game.immersive .sheet .mode-panel, .game.immersive .sheet .mode-tabs, .game.immersive .sheet .round-options {
-  border:0;
-  border-radius:0;
-  background:none;
-  box-shadow:none;
-}
-.game.immersive .sheet .panel-icon { background:none; }
-
 /* Le solde est affiché dans le dock (tous les formats), pas en haut de l'écran. */
 .game.immersive .topbar .balance { display:none; }

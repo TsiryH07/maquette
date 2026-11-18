@@ -1,4 +1,3 @@
-
   .game {
     --bg: #0a0713;
     --surface: #130f20;
@@ -32,17 +31,4 @@
   .balance-value { display: flex; align-items: baseline; gap: 4px; }
   .balance-value strong { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .balance-value small { color: var(--muted); font-size: 12px; font-weight: 600; }
-
-  /* Fenêtre du menu : sections, ligne de réglage avec icône, étapes numérotées. */
-  .game .section-title { margin: 16px 0 4px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .game .row.setting { justify-content: flex-start; gap: 14px; }
-  .setting-icon { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px; color: var(--accent); background: var(--accent-soft); transition: color 0.2s, background-color 0.2s; }
-  .setting-icon.off { color: var(--muted); background: var(--surface-3); }
-  .setting-text { flex: 1; }
-  .game .how { display: grid; gap: 14px; margin: 8px 0 0; padding: 0; list-style: none; counter-reset: step; }
-  .game .how li { counter-increment: step; display: grid; grid-template-columns: 28px 1fr; gap: 2px 12px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
-  .how li::before { content: counter(step); grid-row: span 2; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); font-size: 14px; font-weight: 700; }
-  .how strong { color: var(--text); font-size: 15px; font-weight: 600; }
-  .game .note.demo { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
-  .demo svg { flex: none; margin-top: 1px; color: var(--accent); }
 
